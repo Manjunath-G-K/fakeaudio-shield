@@ -20,13 +20,34 @@ function ModelStatus({ health }) {
   if (health === null) return <div className="status muted">Checking backend…</div>;
   if (health.error) return <div className="status bad">{health.error}</div>;
   if (!health.model_loaded) return <div className="status bad">Model not available: {health.message}</div>;
-  const dev = health.metrics?.dev;
-  const ev = health.metrics?.eval;
+  const test = health.metrics?.test;
+  const langs = health.train_info?.languages ?? [];
   return (
     <div className="status ok">
-      <span className="dot" /> {health.model} ready
-      {dev && <> · dev EER {pct(dev.eer)}</>}
-      {ev && <> · eval EER (unseen attacks) {pct(ev.eer)}</>}
+      <div>
+        <span className="dot" /> {health.model} ready
+        {test && <> · test EER {pct(test.eer)}</>}
+      </div>
+      {langs.length > 0 && <div className="langs">Languages: {langs.join(", ")}</div>}
+      {test?.by_language && (
+        <details>
+          <summary>Measured test results per language</summary>
+          <table>
+            <thead>
+              <tr><th>Language</th><th>EER</th><th>Accuracy</th></tr>
+            </thead>
+            <tbody>
+              {Object.entries(test.by_language).map(([lang, m]) => (
+                <tr key={lang}>
+                  <td>{lang}</td>
+                  <td>{m.eer == null ? "–" : pct(m.eer)}</td>
+                  <td>{pct(m.accuracy)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
     </div>
   );
 }

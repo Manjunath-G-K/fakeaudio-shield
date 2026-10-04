@@ -35,6 +35,12 @@ h1 { margin: 6px 0 4px; font-size: 40px; }
 .status.bad { background: #fbe9e1; color: var(--orange); }
 .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 4px; }
 .muted { color: var(--muted); }
+.status .langs { margin-top: 4px; color: var(--navy); }
+.status details { margin-top: 6px; color: var(--navy); }
+.status summary { cursor: pointer; }
+.status table { margin-top: 6px; border-collapse: collapse; font-size: 13px; }
+.status th, .status td { text-align: left; padding: 2px 14px 2px 0; }
+.status th { color: var(--slate); font-weight: 500; }
 
 .card {
   background: var(--card);
