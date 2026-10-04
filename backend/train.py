@@ -1,18 +1,22 @@
-"""Train the LCNN classifier on ASVspoof 2019 LA and save the checkpoint the API loads.
+"""Train the LCNN classifier and save the checkpoint the API loads.
 
-    python train.py --data-root ../data/LA
+    python train.py --asvspoof-root ../data/LA --indic-root ../data/indic
 
-Uses every FLAC file present under the ASVspoof LA folder layout (the full LA.zip or
-the subset from fetch_asvspoof_subset.py):
-  train split -> training, dev split -> model selection, eval split -> final test
-(the eval split contains attack types A07-A19 that are never seen in training).
+Training data (each source is used if present on disk):
+  * English: ASVspoof 2019 LA (fetch_asvspoof_subset.py). train -> train, dev -> dev,
+    eval -> test (the eval split has attack types A07-A19 never seen in training).
+  * Hindi, Kannada, Tamil, Telugu, Malayalam, Marathi, Bengali: Kathbath (real) and
+    IndicSynth (fake) clips from fetch_indic_subset.py, already split by speaker.
 
-Wav2Vec2 is frozen, so its features are computed once and cached in --cache-dir;
-only the LCNN is trained. Reported metric: Equal Error Rate (EER), as in the PPT.
+The best epoch is picked on the dev set; the test set is only used once at the end.
+Wav2Vec2 is frozen, so its features are computed once and cached in --cache-dir; only the
+LCNN is trained. Reported metric: Equal Error Rate (EER), overall and per language.
 """
 import argparse
+import csv
 import random
 import time
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -27,68 +31,88 @@ from app.inference import pipeline_settings
 from app.model import FakeAudioLCNN
 from app.preprocess import AudioError, load_audio, preprocess, training_segment
 
-PROTOCOLS = {
-    "train": "ASVspoof2019.LA.cm.train.trn.txt",
-    "dev": "ASVspoof2019.LA.cm.dev.trl.txt",
-    "eval": "ASVspoof2019.LA.cm.eval.trl.txt",
+SPLITS = ["train", "dev", "test"]
+ASVSPOOF_PROTOCOLS = {  # ASVspoof split -> (protocol file, our split)
+    "train": ("ASVspoof2019.LA.cm.train.trn.txt", "train"),
+    "dev": ("ASVspoof2019.LA.cm.dev.trl.txt", "dev"),
+    "eval": ("ASVspoof2019.LA.cm.eval.trl.txt", "test"),
 }
 
 
-def list_split(root: Path, split: str):
-    """(flac_path, label, attack) for protocol entries whose file exists on disk."""
-    proto = root / "ASVspoof2019_LA_cm_protocols" / PROTOCOLS[split]
-    if not proto.exists():
-        return []
-    flac_dir = root / f"ASVspoof2019_LA_{split}" / "flac"
+def asvspoof_items(root: Path) -> list[dict]:
     items = []
-    for line in proto.read_text().splitlines():
-        parts = line.split()
-        if len(parts) != 5:
+    for asv_split, (proto_name, split) in ASVSPOOF_PROTOCOLS.items():
+        proto = root / "ASVspoof2019_LA_cm_protocols" / proto_name
+        if not proto.exists():
             continue
-        path = flac_dir / f"{parts[1]}.flac"
-        if path.exists():
-            items.append((path, config.LABELS.index(parts[4]), parts[3]))
+        for line in proto.read_text().splitlines():
+            parts = line.split()
+            path = root / f"ASVspoof2019_LA_{asv_split}" / "flac" / f"{parts[1]}.flac" if len(parts) == 5 else None
+            if path and path.exists():
+                items.append({"path": path, "label": config.LABELS.index(parts[4]), "lang": "English",
+                              "split": split, "cache_key": f"{asv_split}/{parts[1]}"})
     return items
 
 
-def load_features(items, split: str, cache_dir: Path, embedder_holder: list, batch: int = 8):
-    """Features for every file, computed once and cached as one .npz per file."""
-    out_dir = cache_dir / split
-    out_dir.mkdir(parents=True, exist_ok=True)
-    todo = [(p, l) for p, l, _ in items if not (out_dir / f"{p.stem}.npz").exists()]
+def indic_items(root: Path) -> list[dict]:
+    items = []
+    for kind in ("real", "fake"):
+        manifest = root / f"manifest_{kind}.csv"
+        if not manifest.exists():
+            continue
+        with manifest.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                path = root / r["path"]
+                if path.exists():
+                    items.append({"path": path, "label": config.LABELS.index(r["label"]), "lang": r["lang"],
+                                  "split": r["split"], "cache_key": f"indic/{Path(r['path']).with_suffix('')}"})
+    return items
+
+
+def load_features(items: list[dict], cache_dir: Path, embedder_holder: list, batch: int = 8):
+    """Features for every item, computed once and cached as one .npz per file."""
+    def cache_file(it):
+        return cache_dir / f"{it['cache_key']}.npz"
+
+    todo = [it for it in items if not cache_file(it).exists()]
     if todo:
         if not embedder_holder:
             print("Loading Wav2Vec2 (first run downloads ~360 MB from Hugging Face) ...")
             embedder_holder.append(Wav2Vec2Embedder())
-        print(f"[{split}] extracting features for {len(todo)} files ...")
+        print(f"  extracting features for {len(todo)} files ...")
         t0 = time.time()
         for i in range(0, len(todo), batch):
             chunk = []
-            for path, _ in todo[i:i + batch]:
+            for it in todo[i:i + batch]:
                 try:
-                    y, sr = load_audio(str(path))
-                    chunk.append((path, training_segment(preprocess(y, sr))))
+                    y, sr = load_audio(str(it["path"]))
+                    chunk.append((it, training_segment(preprocess(y, sr))))
                 except AudioError as exc:
-                    print(f"  skipping {path.name}: {exc}")
-            if not chunk:
-                continue
-            w2v, spec = extract(embedder_holder[0], [s for _, s in chunk])
-            for (path, _), w, s in zip(chunk, w2v, spec):
-                tmp = out_dir / f"{path.stem}.tmp.npz"     # rename when complete, so an interrupted
-                np.savez(tmp, w2v=w.astype(np.float16), spec=s.astype(np.float16))
-                tmp.replace(out_dir / f"{path.stem}.npz")  # run never leaves a broken cache file
+                    print(f"  skipping {it['path'].name}: {exc}")
+            if chunk:
+                w2v, spec = extract(embedder_holder[0], [s for _, s in chunk])
+                for (it, _), w, s in zip(chunk, w2v, spec):
+                    out = cache_file(it)
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = out.with_suffix(".tmp.npz")             # rename when complete, so an interrupted
+                    np.savez(tmp, w2v=w.astype(np.float16), spec=s.astype(np.float16))
+                    tmp.replace(out)                              # run never leaves a broken cache file
             done = min(i + batch, len(todo))
             if done % 200 < batch or done == len(todo):
                 rate = (time.time() - t0) / done
                 print(f"  {done}/{len(todo)}  (~{rate * (len(todo) - done) / 60:.0f} min left)")
 
-    w2v, spec, labels = [], [], []
-    for path, label, _ in items:
-        f = out_dir / f"{path.stem}.npz"
-        if f.exists():
-            d = np.load(f)
-            w2v.append(d["w2v"]), spec.append(d["spec"]), labels.append(label)
-    return torch.from_numpy(np.stack(w2v)), torch.from_numpy(np.stack(spec)), torch.tensor(labels)
+    kept = [it for it in items if cache_file(it).exists()]
+    w2v, spec = [], []
+    for it in kept:
+        d = np.load(cache_file(it))
+        w2v.append(d["w2v"]), spec.append(d["spec"])
+    return {
+        "w2v": torch.from_numpy(np.stack(w2v)),
+        "spec": torch.from_numpy(np.stack(spec)),
+        "labels": torch.tensor([it["label"] for it in kept]),
+        "langs": np.array([it["lang"] for it in kept]),
+    }
 
 
 def compute_eer(labels: np.ndarray, spoof_scores: np.ndarray) -> float:
@@ -98,33 +122,41 @@ def compute_eer(labels: np.ndarray, spoof_scores: np.ndarray) -> float:
     return float((fpr[i] + fnr[i]) / 2)
 
 
-@torch.no_grad()
-def evaluate(model, data, batch_size=64):
-    model.eval()
-    w2v, spec, labels = data
-    scores = []
-    for i in range(0, len(labels), batch_size):
-        logits = model(w2v[i:i + batch_size].float(), spec[i:i + batch_size].float())
-        scores.append(torch.softmax(logits, 1)[:, 1])
-    scores = torch.cat(scores).numpy()
-    y = labels.numpy()
+def summarise(y: np.ndarray, scores: np.ndarray) -> dict:
     pred = (scores >= 0.5).astype(int)
     return {
-        "eer": compute_eer(y, scores),
+        "eer": compute_eer(y, scores) if len(set(y)) == 2 else None,
         "accuracy": float((pred == y).mean()),
         "bonafide_correct": int(((pred == 0) & (y == 0)).sum()), "bonafide_total": int((y == 0).sum()),
         "spoof_correct": int(((pred == 1) & (y == 1)).sum()), "spoof_total": int((y == 1).sum()),
     }
 
 
+@torch.no_grad()
+def evaluate(model, data, batch_size=64) -> dict:
+    model.eval()
+    scores = []
+    for i in range(0, len(data["labels"]), batch_size):
+        logits = model(data["w2v"][i:i + batch_size].float(), data["spec"][i:i + batch_size].float())
+        scores.append(torch.softmax(logits, 1)[:, 1])
+    scores = torch.cat(scores).numpy()
+    y = data["labels"].numpy()
+    result = summarise(y, scores)
+    result["by_language"] = {lang: summarise(y[data["langs"] == lang], scores[data["langs"] == lang])
+                             for lang in sorted(set(data["langs"]))}
+    return result
+
+
 def fmt(m):
-    return (f"EER {m['eer'] * 100:.2f}%  acc {m['accuracy'] * 100:.1f}%  "
+    eer = "  n/a " if m["eer"] is None else f"{m['eer'] * 100:5.2f}%"
+    return (f"EER {eer}  acc {m['accuracy'] * 100:5.1f}%  "
             f"(real {m['bonafide_correct']}/{m['bonafide_total']}, fake {m['spoof_correct']}/{m['spoof_total']})")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--data-root", default="../data/LA")
+    ap.add_argument("--asvspoof-root", default="../data/LA")
+    ap.add_argument("--indic-root", default="../data/indic")
     ap.add_argument("--cache-dir", default="../data/cache")
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--patience", type=int, default=5, help="stop after this many epochs without dev improvement")
@@ -134,23 +166,25 @@ def main():
     args = ap.parse_args()
 
     random.seed(args.seed), np.random.seed(args.seed), torch.manual_seed(args.seed)
-    root, cache = Path(args.data_root), Path(args.cache_dir)
+    items = asvspoof_items(Path(args.asvspoof_root)) + indic_items(Path(args.indic_root))
+    if not any(it["split"] == "train" for it in items) or not any(it["split"] == "dev" for it in items):
+        raise SystemExit("No training data found. Run fetch_asvspoof_subset.py and/or fetch_indic_subset.py first.")
 
-    if not list_split(root, "train") or not list_split(root, "dev"):
-        raise SystemExit(f"No ASVspoof train/dev audio found under {root.resolve()}. "
-                         "Run fetch_asvspoof_subset.py first.")
+    print("Clips per language and split:")
+    for lang in sorted({it["lang"] for it in items}):
+        c = Counter((it["split"], it["label"]) for it in items if it["lang"] == lang)
+        print(f"  {lang:10s} " + "  ".join(f"{s}: {c[(s, 0)]} real / {c[(s, 1)]} fake" for s in SPLITS))
+
     embedder, data = [], {}
-    for split in PROTOCOLS:                      # listed one by one, in order train -> dev -> eval
-        items = list_split(root, split)
-        if items:
-            data[split] = load_features(items, split, cache, embedder)
+    for split in SPLITS:
+        split_items = [it for it in items if it["split"] == split]
+        if split_items:
+            print(f"[{split}] {len(split_items)} clips")
+            data[split] = load_features(split_items, Path(args.cache_dir), embedder)
     del embedder
 
-    y_train = data["train"][2]
-    counts = torch.bincount(y_train, minlength=2).float()
-    print(f"Train: {int(counts[0])} bona-fide, {int(counts[1])} spoof | "
-          f"dev: {len(data['dev'][2])} | eval: {len(data['eval'][2]) if 'eval' in data else 0}")
-
+    train = data["train"]
+    counts = torch.bincount(train["labels"], minlength=2).float()
     model = FakeAudioLCNN()
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss(weight=counts.sum() / (2 * counts))   # balances the two classes
@@ -159,13 +193,13 @@ def main():
     for epoch in range(1, args.epochs + 1):
         model.train()
         t0, total = time.time(), 0.0
-        perm = torch.randperm(len(y_train))
+        perm = torch.randperm(len(train["labels"]))
         for i in range(0, len(perm), args.batch_size):
             idx = perm[i:i + args.batch_size]
             if len(idx) < 2:
                 continue
-            logits = model(data["train"][0][idx].float(), data["train"][1][idx].float())
-            loss = loss_fn(logits, y_train[idx])
+            logits = model(train["w2v"][idx].float(), train["spec"][idx].float())
+            loss = loss_fn(logits, train["labels"][idx])
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -184,17 +218,21 @@ def main():
     model.load_state_dict(best_state)
     metrics = {"dev": best}
     print(f"\nBest epoch {best_epoch}: dev {fmt(best)}")
-    if "eval" in data:
-        metrics["eval"] = evaluate(model, data["eval"])
-        print(f"Eval (unseen attacks A07-A19): {fmt(metrics['eval'])}")
+    if "test" in data:
+        metrics["test"] = evaluate(model, data["test"])
+        print(f"Test (unseen speakers; English: unseen attacks A07-A19): {fmt(metrics['test'])}")
+        for lang, m in metrics["test"]["by_language"].items():
+            print(f"  {lang:10s} {fmt(m)}")
 
+    langs = sorted(set(train["langs"]))
     config.CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
         "state_dict": model.state_dict(),
         "pipeline": pipeline_settings(),
         "metrics": metrics,
         "train_info": {
-            "dataset": "ASVspoof 2019 LA",
+            "datasets": "ASVspoof 2019 LA (English); Kathbath + IndicSynth (Indian languages)",
+            "languages": langs,
             "train_bonafide": int(counts[0]), "train_spoof": int(counts[1]),
             "best_epoch": best_epoch,
         },
