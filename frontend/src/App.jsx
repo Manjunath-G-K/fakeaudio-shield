@@ -17,13 +17,13 @@ async function readError(res) {
 }
 
 function ModelStatus({ health }) {
-  if (health === null) return <div className="status muted">Checking backend…</div>;
-  if (health.error) return <div className="status bad">{health.error}</div>;
-  if (!health.model_loaded) return <div className="status bad">Model not available: {health.message}</div>;
+  if (health === null) return <div className="status muted" role="status" aria-live="polite">Checking backend…</div>;
+  if (health.error) return <div className="status bad" role="status" aria-live="polite">{health.error}</div>;
+  if (!health.model_loaded) return <div className="status bad" role="status" aria-live="polite">Model not available: {health.message}</div>;
   const test = health.metrics?.test;
   const langs = health.train_info?.languages ?? [];
   return (
-    <div className="status ok">
+    <div className="status ok" role="status" aria-live="polite">
       <div>
         <span className="dot" /> {health.model} ready
         {test && <> · test EER {pct(test.eer)}</>}
@@ -168,7 +168,16 @@ export default function App() {
         <div className="step-label">1 · Upload</div>
         <div
           className={`drop ${dragging ? "dragging" : ""}`}
-          onClick={() => inputRef.current.click()}
+          role="button"
+          tabIndex={0}
+          aria-label={file ? "Choose another audio file" : "Choose an audio file"}
+          onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}
@@ -177,6 +186,7 @@ export default function App() {
             ref={inputRef}
             type="file"
             accept={ALLOWED.join(",")}
+            aria-label="Audio file"
             hidden
             onChange={(e) => { choose(e.target.files[0]); e.target.value = ""; }}
           />
@@ -192,13 +202,13 @@ export default function App() {
             </>
           )}
         </div>
-        {audioUrl && <audio controls src={audioUrl} className="player" />}
+        {audioUrl && <audio controls src={audioUrl} className="player" aria-label="Selected audio preview" />}
 
-        <button className="analyse" disabled={!file || busy} onClick={analyse}>
+        <button className="analyse" type="button" aria-busy={busy} disabled={!file || busy} onClick={analyse}>
           {busy ? "Analysing…" : "Analyse"}
         </button>
         {busy && (
-          <div className="processing">
+          <div className="processing" role="status" aria-live="polite">
             <div className="step-label">2 · Processing</div>
             <div className="spinner" />
             Resampling to 16 kHz, trimming silence, extracting Wav2Vec2 + MFCC/log-mel features, running the LCNN…

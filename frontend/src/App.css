@@ -61,6 +61,7 @@ h1 { margin: 6px 0 4px; font-size: 40px; }
   transition: background 0.15s, border-color 0.15s;
 }
 .drop:hover, .drop.dragging { background: #f4f7fc; border-color: var(--blue); }
+.drop:focus-visible, .analyse:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
 .file-name { font-weight: 600; margin-bottom: 4px; word-break: break-all; }
 
 .player { width: 100%; margin-top: 16px; }
