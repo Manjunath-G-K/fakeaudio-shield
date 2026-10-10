@@ -200,6 +200,62 @@ without one, reports the state at `/api/health`, and returns HTTP 503 instead of
 7. Consider XLS-R or IndicWav2Vec after measuring the baseline; larger encoders increase CPU
    and memory requirements.
 
+## Next project plan
+
+The next milestone is to produce a measured multilingual baseline that teammates can run
+from a clean checkout. Work through the phases in order so model quality is measured before
+adding larger models or deployment complexity.
+
+### Phase 1: Finish the data pipeline
+
+- Accept the Kathbath terms and complete the real-speech download.
+- Finish the IndicSynth download and confirm every requested language has a manifest entry.
+- Check that train, dev, and test speakers do not overlap for Indian-language data.
+- Keep downloaded audio and feature caches under `data/`; do not commit them.
+
+### Phase 2: Train and record a baseline
+
+```powershell
+cd backend
+.venv\Scripts\Activate.ps1
+python train.py --asvspoof-root ..\data\LA --indic-root ..\data\indic
+```
+
+Record the following from the training output and checkpoint metadata:
+
+- overall dev and test EER and accuracy;
+- per-language EER and accuracy;
+- number of clips, speakers, and generators in every split;
+- training settings, runtime, and the checkpoint date.
+
+The phase is complete when `backend/checkpoints/fakeaudio_lcnn.pt` exists and the API
+reports `model_loaded: true` from `/api/health`.
+
+### Phase 3: Validate the application
+
+- Run the frontend and backend together with at least one real and one generated clip per
+  available language.
+- Test empty, silent, corrupt, unsupported, oversized, and very short uploads.
+- Confirm that long recordings are capped at 60 seconds and that segment probabilities are
+  displayed correctly.
+- Add automated backend tests for preprocessing, checkpoint mismatch, and API status codes.
+- Add frontend tests for file validation, keyboard upload, loading states, and errors.
+
+### Phase 4: Improve reliability and generalisation
+
+- Calibrate the decision threshold on a held-out validation set instead of assuming `0.5`.
+- Add request IDs, structured logs, and a bounded inference queue before public deployment.
+- Evaluate on ASVspoof 2021 DF, WaveFake, and in-the-wild recordings.
+- Compare the measured baseline with XLS-R or IndicWav2Vec only if multilingual results
+  justify the extra CPU and memory cost.
+
+### Definition of release readiness
+
+The project is ready for a supervised demonstration when a fresh setup can install the
+dependencies, load the checkpoint, pass the validation cases above, show measured metrics
+for each supported language, and clearly label every result as a prediction rather than proof
+of authenticity.
+
 ## Team
 
 Anitha M · Madiha Naz · Mallikarjun M B ·
