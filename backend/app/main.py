@@ -33,7 +33,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="FakeAudio Shield API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=config.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -55,10 +55,10 @@ def predict(file: UploadFile = File(...)):
     if not detector.ready:
         raise HTTPException(503, detector.load_error)
 
-    data = file.file.read(config.MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    data = file.file.read(config.MAX_UPLOAD_BYTES + 1)
     if len(data) == 0:
         raise HTTPException(400, "The uploaded file is empty.")
-    if len(data) > config.MAX_UPLOAD_MB * 1024 * 1024:
+    if len(data) > config.MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"File is larger than {config.MAX_UPLOAD_MB} MB.")
 
     fd, tmp_path = tempfile.mkstemp(suffix=ext)

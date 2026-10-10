@@ -3,6 +3,7 @@
 Training (train.py) and the API (main.py) both import from here, so the audio the
 model sees at prediction time is prepared exactly the same way as during training.
 """
+import os
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -18,7 +19,19 @@ SILENCE_PEAK = 1e-4           # peak amplitude below this counts as a silent fil
 
 # --- Upload limits -----------------------------------------------------------
 MAX_UPLOAD_MB = 20
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = {".wav", ".flac", ".mp3", ".ogg", ".m4a"}
+
+# Comma-separated so local development and deployed frontends can use the same
+# code. Keep the local Vite origins as the safe default.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "FAKEAUDIO_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
 
 # --- Features ----------------------------------------------------------------
 W2V_MODEL_NAME = "facebook/wav2vec2-base"

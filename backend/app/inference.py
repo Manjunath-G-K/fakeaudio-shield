@@ -1,4 +1,5 @@
 """Runs the full pipeline on one file: preprocess -> features -> Wav2Vec2 + LCNN -> result."""
+import logging
 import threading
 import time
 from pathlib import Path
@@ -10,6 +11,8 @@ from . import config
 from .features import Wav2Vec2Embedder, extract
 from .model import FakeAudioLCNN
 from .preprocess import load_audio, preprocess, segment
+
+log = logging.getLogger(__name__)
 
 # settings that must match between training and prediction
 PIPELINE_KEYS = ["SAMPLE_RATE", "SEGMENT_SECONDS", "TRIM_TOP_DB", "W2V_MODEL_NAME", "W2V_LAYER",
@@ -38,19 +41,36 @@ class Detector:
         if not self.checkpoint_path.exists():
             self.load_error = (
                 f"No trained model found at {self.checkpoint_path}. "
-                "Train it first with: python train.py --data-root ../data/LA"
+                "Train it first with: python train.py --asvspoof-root ../data/LA"
             )
             return
-        ckpt = torch.load(self.checkpoint_path, map_location="cpu", weights_only=False)
-        if ckpt.get("pipeline") != pipeline_settings():
-            self.load_error = ("The checkpoint was trained with different preprocessing settings "
-                               "than app/config.py. Retrain the model.")
+        try:
+            ckpt = torch.load(self.checkpoint_path, map_location="cpu", weights_only=False)
+            if not isinstance(ckpt, dict) or "state_dict" not in ckpt:
+                raise ValueError("checkpoint is not a valid FakeAudio checkpoint")
+            if ckpt.get("pipeline") != pipeline_settings():
+                self.load_error = ("The checkpoint was trained with different preprocessing settings "
+                                   "than app/config.py. Retrain the model.")
+                return
+
+            lcnn = FakeAudioLCNN()
+            lcnn.load_state_dict(ckpt["state_dict"])
+            lcnn.eval()
+            embedder = Wav2Vec2Embedder()
+        except Exception:
+            # Keep the API available so /api/health can explain the problem and
+            # /api/predict can return a controlled 503 instead of killing startup.
+            log.exception("Could not load checkpoint %s", self.checkpoint_path)
+            self.load_error = (
+                "The trained model could not be loaded. Retrain it with the current code "
+                "and check the backend log for details."
+            )
             return
-        self.lcnn = FakeAudioLCNN()
-        self.lcnn.load_state_dict(ckpt["state_dict"])
+
+        self.lcnn = lcnn
         self.lcnn.eval()
         self.meta = {k: ckpt.get(k) for k in ("metrics", "train_info", "trained_at")}
-        self.embedder = Wav2Vec2Embedder()
+        self.embedder = embedder
 
     @property
     def ready(self) -> bool:
