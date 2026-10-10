@@ -39,7 +39,7 @@ Steps 1 and 7 run in the React web page. Steps 2–6 run in the FastAPI backend 
 ```
 backend/
   app/
-    config.py        shared settings (sample rate, frame sizes, upload limits)
+    config.py        shared preprocessing, upload, and CORS settings
     preprocess.py    load, resample, trim, normalise, segment, invalid-audio checks
     features.py      Wav2Vec2 embeddings + MFCC/log-mel
     model.py         LCNN classifier
@@ -55,55 +55,83 @@ frontend/                    React (Vite) user interface
 
 Requirements: Python 3.11+, Node.js 18+, and `ffmpeg` on PATH (needed for M4A files).
 
-```bash
+Create the backend environment:
+
+```powershell
 cd backend
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-```bash
+Install the frontend dependencies:
+
+```powershell
 cd frontend
 npm install
 ```
 
 ## Train the model
 
-The trained checkpoint is not included in the repo yet, so it must be trained first.
+The trained checkpoint is generated locally and is not included in the repo. The current
+pipeline supports English ASVspoof 2019 LA data and optional Indian-language Kathbath
+real speech plus IndicSynth generated speech.
 
-```bash
+Download the English subset:
+
+```powershell
 cd backend
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 python fetch_asvspoof_subset.py --out ..\data\LA
-python train.py --data-root ..\data\LA
 ```
 
-- `fetch_asvspoof_subset.py` downloads 2,500 train, 800 dev and 800 eval clips (~250 MB)
-  from the official ASVspoof 2019 LA release on Edinburgh DataShare. It reads them from
-  the remote ZIP, so the full 7 GB file is never downloaded.
-- `train.py` caches the Wav2Vec2 features, trains the LCNN, picks the best epoch on the
-  dev set, then tests on the eval set. The eval set uses attack types A07–A19, which the
-  model never sees in training. It saves `backend/checkpoints/fakeaudio_lcnn.pt`, along
-  with the measured EER and accuracy.
+For the Indian-language real-speech download, accept the Kathbath dataset terms on Hugging
+Face and authenticate with `hf auth login`. Then run the downloads as needed:
+
+```powershell
+python fetch_indic_subset.py --out ..\data\indic --kind fake
+python fetch_indic_subset.py --out ..\data\indic --kind real
+```
+
+Both downloaders resume through their manifests. Train using both roots:
+
+```powershell
+python train.py --asvspoof-root ..\data\LA --indic-root ..\data\indic
+```
+
+`train.py` caches Wav2Vec2 and spectral features under `data/cache`, selects the best epoch
+on the dev split, reports EER and accuracy, and writes
+`backend/checkpoints/fakeaudio_lcnn.pt`. A missing data source is skipped by the training
+script.
 
 ## Run
 
 Terminal 1 (backend):
 
-```bash
+```powershell
 cd backend
-.venv\Scripts\activate
-uvicorn app.main:app --port 8000
+.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Terminal 2 (frontend):
 
-```bash
+```powershell
 cd frontend
 npm run dev
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173. The Vite development server forwards `/api` requests to the
+FastAPI server on port 8000.
+
+For a frontend hosted on another origin, set a comma-separated list before starting the
+backend:
+
+```powershell
+$env:FAKEAUDIO_CORS_ORIGINS = "http://localhost:5173,https://example.com"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
 ## API
 
@@ -141,18 +169,36 @@ Errors return `{"detail": "<message>"}` and the web page shows that message:
 
 | Dataset | Use | Status |
 |---|---|---|
-| ASVspoof 2019 LA | Training, dev and eval | Used (balanced subset) |
-| ASVspoof 2021 DF, WaveFake, In-the-Wild | Further testing | Planned, not yet used |
+| ASVspoof 2019 LA | English training, dev and eval | Balanced subset downloader included |
+| Kathbath | Indian-language bona-fide speech | Requires Hugging Face access; downloader included |
+| IndicSynth | Indian-language generated speech | Downloader included |
+| ASVspoof 2021 DF, WaveFake, in-the-wild audio | External testing | Planned |
 
-## Design notes and limitations
+## Current status and limitations
 
-- **Wav2Vec2 is frozen, not fine-tuned.** Training runs on a CPU-only laptop, so Wav2Vec2
-  is used as a fixed feature extractor and only the LCNN is trained.
-- **Subset training.** The model is trained on 4,100 clips rather than the full ~100K
-  utterances. Accuracy figures come from `train.py`'s measured EER, not from targets.
-- Accuracy depends on the training data. New voice-cloning tools and recording conditions
-  very different from ASVspoof (phone calls, noise, music) may reduce accuracy.
-- **The output is a prediction, not proof of authenticity.**
+At the time of this README update, no trained checkpoint is committed. The API starts
+without one, reports the state at `/api/health`, and returns HTTP 503 instead of guessing.
+
+- **Wav2Vec2 is frozen, not fine-tuned.** Only the LCNN is trained to keep CPU training
+  practical.
+- **Subset training.** Metrics must be taken from `train.py` output; they are not target
+  values and should be recorded for each language after training.
+- Accuracy can fall for unseen voice-cloning systems, languages, codecs, noise, music, or
+  telephone recordings.
+- A confidence score is not a calibrated probability of fraud.
+- Dataset licences and access terms must be checked before redistributing audio or models.
+
+## Suggested improvements
+
+1. Finish the multilingual downloads and record measured per-language EER and accuracy.
+2. Add automated backend tests for audio validation, segmentation, checkpoint mismatch, and
+   API status codes.
+3. Add frontend tests for file validation, keyboard upload, loading states, and errors.
+4. Calibrate the decision threshold on a held-out validation set instead of assuming `0.5`.
+5. Add request IDs, structured logs, and a bounded worker queue before public deployment.
+6. Evaluate on ASVspoof 2021 DF, WaveFake, and in-the-wild recordings.
+7. Consider XLS-R or IndicWav2Vec after measuring the baseline; larger encoders increase CPU
+   and memory requirements.
 
 ## Team
 
