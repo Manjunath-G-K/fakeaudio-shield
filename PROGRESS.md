@@ -1,22 +1,21 @@
 # FakeAudio Shield: Progress Notes
 
-_Last updated: 4 Oct 2026, 09:05. Work is paused; nothing is running in the background._
+_Last updated: 13 Oct 2026. The English demo is complete; the multilingual work is paused._
 
 ## Summary
 
 | Area | Status |
 |---|---|
 | Backend (FastAPI): preprocessing, Wav2Vec2 + MFCC/log-mel, LCNN, API, error handling | ✅ Done and tested |
-| Frontend (React): upload, preview, verdict, confidence, probabilities, errors, per-language results | ✅ Done and tested (no-model state) |
-| English data: ASVspoof 2019 LA subset (2,500 train / 800 dev / 800 eval) | ✅ Downloaded |
-| Indian-language fake speech: IndicSynth, 300 clips × 7 languages | 🟡 501 / 2,100 (Hindi 300, Kannada 201) |
+| Frontend (React): upload, preview, verdict, confidence, probabilities, errors, per-language results | ✅ Done and tested with the trained model |
+| English data: ASVspoof 2019 LA subset (2,500 train / 800 dev / 800 eval) | ✅ Downloaded, features cached |
+| **English model** (`backend/checkpoints/fakeaudio_lcnn.pt`) | ✅ Trained (3 epochs): dev EER 2.00%, **test EER 8.25%** on unseen attacks |
+| End-to-end demo test (API + web page, real/fake/MP3/invalid/silent/empty/wrong type) | ✅ Passed, 13 Oct 2026 |
+| Indian-language fake speech: IndicSynth, 300 clips × 7 languages | 🟡 1,313 / 2,100 (Hindi, Kannada, Tamil, Telugu done; Malayalam 113; Marathi, Bengali 0) |
 | Indian-language real speech: Kathbath, 300 clips × 7 languages | ⛔ Not started: waiting for Hugging Face login |
-| Feature extraction (Wav2Vec2 + spectral) | 🟡 343 / ~8,300 clips cached |
-| Model training + measured EER | ⛔ Not started |
-| End-to-end test with the trained model | ⛔ Not started |
+| Multilingual model | ⛔ Not started: needs the real Indian speech first |
 
-**No trained model exists yet.** Until one does, the app does not guess: the API returns
-HTTP 503 "No trained model found" and the web page shows that message.
+The demo runs with the English model; see `DEMO.md`. Full results are in the README.
 
 ## Decisions taken
 
