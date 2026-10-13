@@ -31,12 +31,22 @@ speakers or these fake-voice systems during training.
 | File | Expected result | What it demonstrates |
 |---|---|---|
 | `real_1_….flac`, `real_2_…`, `real_3_…` | REAL / Bona-fide | Genuine human speech |
-| `fake_A10_….flac` | AI-GENERATED / Spoof | Neural TTS (Tacotron 2 + WaveRNN) |
-| `fake_A13_….flac` | AI-GENERATED / Spoof | Combined TTS + voice-conversion system |
-| `fake_A17_….flac` | AI-GENERATED / Spoof | Voice conversion (VAE + waveform filtering) |
-| `real_1_as_mp3.mp3` | REAL | Other formats work (MP3, 44.1 kHz → resampled to 16 kHz) |
+| `fake_A13_….flac` | AI-GENERATED, 98.5% | Combined TTS + voice-conversion system |
+| `fake_A17_….flac` | AI-GENERATED, 99.8% | Voice conversion (VAE + waveform filtering) |
+| `fake_A10_….flac` | **REAL, 90.7%: a miss** | Neural TTS (Tacotron 2 + WaveRNN). Show this deliberately as the limitation (see below). |
+| `real_1_as_mp3.mp3` | REAL, 99.5% | Other formats work (MP3, 44.1 kHz → resampled to 16 kHz) |
 | `invalid_not_audio.wav` | Error: "Could not decode the file as audio" | Invalid files are handled |
 | `invalid_silent.wav` | Error: "The audio is silent" | Silence is rejected, not guessed |
+
+The real clips score 99.6–99.8% REAL. All results above were checked through the running
+web page and API.
+
+**Tip:** the first analysis after starting the backend takes about 7 s (model warm-up);
+later ones take about 1 s. Analyse one file before your guide arrives.
+
+**About the A10 miss:** A10 is a modern neural TTS voice that is not in the training data.
+Missing it is an honest example of the main limitation. Detectors only reliably catch
+the kinds of fakes they have learned from, which is why the test set uses unseen attacks.
 
 Steps for each file: **Choose file → (optionally play it) → Analyse → read the verdict,
 confidence, probability bars and details.**
@@ -74,7 +84,19 @@ confidence, probability bars and details.**
   appear in training**: this is the honest "new fake generator" test.
 - Metric: **Equal Error Rate (EER)**, the point where false alarms equal misses. Lower is better.
 
-_Measured results are added here once the English model's training run finishes._
+Measured results of the included English model (stopped after epoch 3):
+
+| Split | EER | Real passed | Fake caught (at 50%) |
+|---|---|---|---|
+| Dev (seen attack types) | 2.00% | 396 / 400 | 364 / 400 |
+| **Test (13 unseen attack types)** | **8.25%** | **399 / 400** | **252 / 400 (63%)** |
+
+In one sentence for the guide: *"It almost never calls a real voice fake, and it separates
+real from fake well (8.25% EER on unseen attacks). But with the default threshold it
+misses about a third of fakes from generators it was never trained on. That's why
+more diverse training data is our next step."*
+
+Per-attack detection rates are in the README.
 
 ## 5. Questions the guide may ask
 
@@ -89,6 +111,9 @@ _Measured results are added here once the English model's training run finishes.
   Kannada, Tamil, Telugu, Malayalam, Marathi and Bengali are built (IndicSynth fake +
   Kathbath real, split by speaker). The current demo model is **English-only**; the
   multilingual model needs the real-speech download to finish (see `PROGRESS.md`).
+- **Why stop after 3 epochs?** Each epoch takes 9–20 minutes on this CPU. Dev EER was
+  already 2.00%, and the best epoch is saved automatically. Longer training is possible
+  with the same command.
 - **Limitations?** It is trained on a subset (2,500 clips). New voice cloners, phone
   calls, noise or music can reduce accuracy. The result supports human judgement and is
   not proof.
