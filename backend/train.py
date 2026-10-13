@@ -163,10 +163,15 @@ def main():
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--languages", nargs="+", help="train on these languages only, e.g. --languages English")
+    ap.add_argument("--extract-only", action="store_true",
+                    help="only compute and cache features (e.g. while downloads are still running)")
     args = ap.parse_args()
 
     random.seed(args.seed), np.random.seed(args.seed), torch.manual_seed(args.seed)
     items = asvspoof_items(Path(args.asvspoof_root)) + indic_items(Path(args.indic_root))
+    if args.languages:
+        items = [it for it in items if it["lang"] in args.languages]
     if not any(it["split"] == "train" for it in items) or not any(it["split"] == "dev" for it in items):
         raise SystemExit("No training data found. Run fetch_asvspoof_subset.py and/or fetch_indic_subset.py first.")
 
@@ -182,6 +187,9 @@ def main():
             print(f"[{split}] {len(split_items)} clips")
             data[split] = load_features(split_items, Path(args.cache_dir), embedder)
     del embedder
+    if args.extract_only:
+        print("Features cached. Run train.py again without --extract-only to train.")
+        return
 
     train = data["train"]
     counts = torch.bincount(train["labels"], minlength=2).float()
@@ -189,6 +197,26 @@ def main():
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss(weight=counts.sum() / (2 * counts))   # balances the two classes
     best, best_state, best_epoch, stale = None, None, 0, 0
+    langs = sorted(set(train["langs"]))
+    datasets = (["ASVspoof 2019 LA (English)"] if "English" in langs else []) + \
+               (["Kathbath + IndicSynth (Indian languages)"] if set(langs) - {"English"} else [])
+
+    def save_checkpoint(state, metrics, epoch):
+        config.CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = config.CHECKPOINT_PATH.with_suffix(".tmp")
+        torch.save({
+            "state_dict": state,
+            "pipeline": pipeline_settings(),
+            "metrics": metrics,
+            "train_info": {
+                "datasets": "; ".join(datasets),
+                "languages": langs,
+                "train_bonafide": int(counts[0]), "train_spoof": int(counts[1]),
+                "best_epoch": epoch,
+            },
+            "trained_at": datetime.now().isoformat(timespec="seconds"),
+        }, tmp)
+        tmp.replace(config.CHECKPOINT_PATH)   # atomic, so the API never loads a half-written file
 
     for epoch in range(1, args.epochs + 1):
         model.train()
@@ -209,6 +237,7 @@ def main():
         if best is None or dev["eer"] < best["eer"]:
             best, best_epoch, stale = dev, epoch, 0
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
+            save_checkpoint(best_state, {"dev": best}, epoch)   # usable model even if stopped early
         else:
             stale += 1
             if stale >= args.patience:
@@ -224,20 +253,7 @@ def main():
         for lang, m in metrics["test"]["by_language"].items():
             print(f"  {lang:10s} {fmt(m)}")
 
-    langs = sorted(set(train["langs"]))
-    config.CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({
-        "state_dict": model.state_dict(),
-        "pipeline": pipeline_settings(),
-        "metrics": metrics,
-        "train_info": {
-            "datasets": "ASVspoof 2019 LA (English); Kathbath + IndicSynth (Indian languages)",
-            "languages": langs,
-            "train_bonafide": int(counts[0]), "train_spoof": int(counts[1]),
-            "best_epoch": best_epoch,
-        },
-        "trained_at": datetime.now().isoformat(timespec="seconds"),
-    }, config.CHECKPOINT_PATH)
+    save_checkpoint(best_state, metrics, best_epoch)
     print(f"Saved checkpoint to {config.CHECKPOINT_PATH}")
 
 
