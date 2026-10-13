@@ -11,6 +11,12 @@ AI-generated. Upload an audio file and get **Real / Bona-fide** or
 
 ---
 
+## Quick start (demo)
+
+A trained English model is included. On Windows, double-click `start-backend.bat`, wait
+for `FakeAudio Shield: Model ready`, then double-click `start-frontend.bat`. See
+[DEMO.md](DEMO.md) for what to show and how to explain it.
+
 ## How it works
 
 ```mermaid
@@ -45,10 +51,16 @@ backend/
     model.py         LCNN classifier
     inference.py     full pipeline for one file
     main.py          FastAPI app: GET /api/health, POST /api/predict
-  train.py                   trains the LCNN and reports EER
+  checkpoints/fakeaudio_lcnn.pt   trained English model (1.3 MB)
+  train.py                   trains the LCNN and reports EER (overall and per language)
+  evaluate.py                scores the saved model on the test split
   fetch_asvspoof_subset.py   downloads a balanced ASVspoof 2019 LA subset
+  fetch_indic_subset.py      downloads Kathbath (real) + IndicSynth (fake) samples
   requirements.txt
 frontend/                    React (Vite) user interface
+start-backend.bat, start-frontend.bat   double-click launchers
+DEMO.md                      demo script and plain-language explanation
+PROGRESS.md                  progress notes and how to resume the multilingual work
 ```
 
 ## Setup (Windows)
@@ -74,9 +86,10 @@ npm install
 
 ## Train the model
 
-The trained checkpoint is generated locally and is not included in the repo. The current
-pipeline supports English ASVspoof 2019 LA data and optional Indian-language Kathbath
-real speech plus IndicSynth generated speech.
+An English-only checkpoint is included (see [Measured results](#measured-results)), so
+training is only needed to reproduce it or to add the Indian languages. The pipeline
+supports English ASVspoof 2019 LA data and optional Indian-language Kathbath real speech
+plus IndicSynth generated speech.
 
 Download the English subset:
 
@@ -104,6 +117,11 @@ python train.py --asvspoof-root ..\data\LA --indic-root ..\data\indic
 on the dev split, reports EER and accuracy, and writes
 `backend/checkpoints/fakeaudio_lcnn.pt`. A missing data source is skipped by the training
 script.
+
+Useful options: `--languages English` trains on a subset of languages, and `--extract-only`
+caches features without training (for example while downloads are still running). The
+best model is saved after every improving epoch, so training can be stopped early. In
+that case, run `python evaluate.py` to measure the saved model on the test split.
 
 ## Run
 
@@ -137,7 +155,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/health` | Whether the model is loaded, plus its measured dev/eval EER |
+| GET | `/api/health` | Whether the model is loaded, plus its measured dev/test EER |
 | POST | `/api/predict` | Multipart field `file` (WAV, FLAC, MP3, OGG or M4A, ≤ 20 MB) |
 
 Example response:
@@ -171,18 +189,45 @@ Errors return `{"detail": "<message>"}` and the web page shows that message:
 |---|---|---|
 | ASVspoof 2019 LA | English training, dev and eval | Balanced subset downloader included |
 | Kathbath | Indian-language bona-fide speech | Requires Hugging Face access; downloader included |
-| IndicSynth | Indian-language generated speech | Downloader included |
+| IndicSynth | Indian-language generated speech | Downloader included. The Hugging Face release contains only XTTS-v2 and FreeVC clips (no VITS, although the dataset card lists it). |
 | ASVspoof 2021 DF, WaveFake, in-the-wild audio | External testing | Planned |
+
+## Measured results
+
+English-only model (`backend/checkpoints/fakeaudio_lcnn.pt`), trained on 2,500 ASVspoof
+2019 LA clips (1,250 real + 1,250 fake, attacks A01–A06). Training was stopped after
+epoch 3 (about 9–20 minutes per epoch on this CPU). The epoch was chosen on the dev set;
+the test set was used once, afterwards.
+
+| Split | Clips | EER | Accuracy at 0.5 | Real passed | Fake caught |
+|---|---|---|---|---|---|
+| Dev (attacks A01–A06, seen) | 800 | 2.00% | 95.0% | 396 / 400 | 364 / 400 |
+| **Test (attacks A07–A19, never seen)** | 800 | **8.25%** | 81.4% | 399 / 400 | 252 / 400 |
+
+Fake detection on the test set by attack type, at the 0.5 threshold:
+
+| Attack | A07 | A08 | A09 | A10 | A11 | A12 | A13 | A14 | A15 | A16 | A17 | A18 | A19 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Caught | 39% | 90% | 84% | 16% | 45% | 65% | 100% | 48% | 45% | 65% | 93% | 70% | 60% |
+
+**How to read this:** the model almost never calls real speech fake (399/400), but at
+the default 0.5 threshold it misses about a third of the fakes made by generators it has
+never seen. Some systems are caught almost always (A13, A17), others rarely (A10, a
+Tacotron 2 + WaveRNN voice). The low EER shows the scores separate real from fake well;
+the threshold is not yet calibrated for unseen attacks.
 
 ## Current status and limitations
 
-At the time of this README update, no trained checkpoint is committed. The API starts
-without one, reports the state at `/api/health`, and returns HTTP 503 instead of guessing.
+The included checkpoint is **English-only**. The Indian-language pipeline is built, but
+it is not trained yet: 1,313 of 2,100 IndicSynth fake clips are downloaded (Hindi, Kannada,
+Tamil and Telugu complete, Malayalam 113/300), and the Kathbath real speech still needs Hugging Face access (see `PROGRESS.md`).
+Without a checkpoint the API still starts, reports the state at `/api/health`, and returns
+HTTP 503 instead of guessing.
 
 - **Wav2Vec2 is frozen, not fine-tuned.** Only the LCNN is trained to keep CPU training
   practical.
-- **Subset training.** Metrics must be taken from `train.py` output; they are not target
-  values and should be recorded for each language after training.
+- **Subset training.** 2,500 training clips and 3 epochs. The numbers above are measured,
+  not targets; per-language numbers are recorded once the Indian languages are trained.
 - Accuracy can fall for unseen voice-cloning systems, languages, codecs, noise, music, or
   telephone recordings.
 - A confidence score is not a calibrated probability of fraud.
