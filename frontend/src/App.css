@@ -92,7 +92,8 @@ h1 { margin: 6px 0 4px; font-size: 40px; }
 .error { background: #fbe9e1; color: var(--orange); }
 .error div { margin-top: 4px; color: var(--navy); }
 
-.result .verdict { font-size: 44px; font-weight: 700; letter-spacing: 0.02em; }
+/* shrinks on narrow screens so "AI-GENERATED" always fits on one line */
+.result .verdict { font-size: clamp(24px, 9vw, 44px); font-weight: 700; letter-spacing: 0.02em; }
 .result.spoof .verdict { color: var(--orange); }
 .result.real .verdict { color: var(--green); }
 .verdict-sub { color: var(--slate); margin-bottom: 10px; }
