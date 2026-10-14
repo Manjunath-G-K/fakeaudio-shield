@@ -57,7 +57,10 @@ backend/
   fetch_asvspoof_subset.py   downloads a balanced ASVspoof 2019 LA subset
   fetch_indic_subset.py      downloads Kathbath (real) + IndicSynth (fake) samples
   requirements.txt
-frontend/                    React (Vite) user interface
+frontend/                    React (Vite) website
+  src/components/            Nav, Hero, Detector, Waveform, Results, Team, FAQ, … sections
+  src/api.js                 calls to /api/health and /api/predict
+  public/samples/            5 ASVspoof 2019 eval clips for the "try a sample" buttons (ODC-By)
 start-backend.bat, start-frontend.bat   double-click launchers
 DEMO.md                      demo script and plain-language explanation
 PROGRESS.md                  progress notes and how to resume the multilingual work

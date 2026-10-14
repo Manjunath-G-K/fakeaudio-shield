@@ -23,10 +23,25 @@ npm run dev
 The top of the page should show a green line: **"Wav2Vec2 (wav2vec2-base, frozen) + LCNN ready · test EER …"**.
 If it is red, the backend is not running or the model file is missing.
 
-## 2. What to show (files in `D:\FakeAudio\data\demo_samples`)
+## 2. What to show
 
-These clips are from the ASVspoof 2019 **evaluation** set. The model never saw these
-speakers or these fake-voice systems during training.
+**Suggested walkthrough of the website (about 5 minutes):**
+
+1. **Hero**: the problem in one line, with the live "Model online" badge in the top bar.
+2. **Detector**: click the sample buttons. No file dialog is needed. Each sample shows the
+   verdict, a confidence ring, the waveform, and the **ground truth**, so a correct answer
+   and a miss are both visible:
+   - *Real voice* → REAL ✓
+   - *AI voice: Voice conversion (A17)* → AI-GENERATED ✓
+   - *AI voice: Neural TTS (A10), hard case* → REAL ✗. This is the honest limitation.
+   Then drag in a file of your own, or a broken one, to show the error handling.
+3. **How it works**: the six pipeline steps.
+4. **Results**: the live dev and test numbers, and the limitations box.
+5. **Use cases → Roadmap** (Indian languages in progress) **→ Team → FAQ**.
+
+The same clips also exist as files in `D:\FakeAudio\data\demo_samples` (for uploading by hand).
+They are from the ASVspoof 2019 **evaluation** set: the model never saw these speakers or
+these fake-voice systems during training.
 
 | File | Expected result | What it demonstrates |
 |---|---|---|
