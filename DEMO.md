@@ -27,17 +27,28 @@ If it is red, the backend is not running or the model file is missing.
 
 **Suggested walkthrough of the website (about 5 minutes):**
 
-1. **Hero**: the problem in one line, with the live "Model online" badge in the top bar.
-2. **Detector**: click the sample buttons. No file dialog is needed. Each sample shows the
-   verdict, a confidence ring, the waveform, and the **ground truth**, so a correct answer
-   and a miss are both visible:
-   - *Real voice* → REAL ✓
-   - *AI voice: Voice conversion (A17)* → AI-GENERATED ✓
-   - *AI voice: Neural TTS (A10), hard case* → REAL ✗. This is the honest limitation.
-   Then drag in a file of your own, or a broken one, to show the error handling.
-3. **How it works**: the six pipeline steps.
-4. **Results**: the live dev and test numbers, and the limitations box.
-5. **Use cases → Roadmap** (Indian languages in progress) **→ Team → FAQ**.
+The website is built as an instrument: the detector is the page, and the explanation sits
+below it as a numbered technical sheet. "MODEL ONLINE" in the top-right confirms the backend is up.
+
+1. **Detector:** press the keys **1–5** (or click the sample keys). Each run shows:
+   - the **spectrogram** of the clip (0–8 kHz, computed in the browser)
+   - the verdict, **AUTHENTIC** or **SYNTHETIC**, with the confidence
+   - the P(spoof) and P(real) meters with a 50% mark, and one block per 4-second segment
+   - the **reference** (ground truth) for samples, marked MATCH or MISS
+
+   Suggested order:
+   - **1** real voice → AUTHENTIC, MATCH
+   - **3** A17 voice conversion → SYNTHETIC, MATCH
+   - **5** A10 neural TTS → AUTHENTIC, **MISS**. This is the honest limitation.
+
+   The **session log** under the detector keeps every run, so the three are visible side by
+   side. **P** plays the clip with a playhead moving over the spectrogram. **Export report**
+   downloads the result as JSON. Then drag in your own file, or a broken one, to show the
+   error handling (the verdict shows REJECTED with the reason).
+2. **01 Signal chain:** the pipeline as a schematic, with the exact settings.
+3. **02 Measurements:** live dev/test numbers and the per-attack detection chart. Point at
+   A10 (16%) and A13 (100%) to show why sample 5 was missed.
+4. **03 Limits** and **04 Data & privacy**: what it can't do, and that audio never leaves the laptop.
 
 The same clips also exist as files in `D:\FakeAudio\data\demo_samples` (for uploading by hand).
 They are from the ASVspoof 2019 **evaluation** set: the model never saw these speakers or
