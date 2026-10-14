@@ -1,58 +1,72 @@
-import { useEffect, useState } from "react";
-import { getHealth, pct } from "./api.js";
-import Detector from "./components/Detector.jsx";
-import { FAQ, Footer, Hero, HowItWorks, Nav, Results, Roadmap, Stats, Team, UseCases } from "./components/Sections.jsx";
+import { useCallback, useEffect, useState } from "react";
+import { getHealth } from "./api.js";
+import Instrument from "./components/Instrument.jsx";
+import { DataPrivacy, Limits, Measurements, Pipeline } from "./components/Sheet.jsx";
 
-function DetectorStatus({ health }) {
-  if (health === null) return <div className="status muted" role="status" aria-live="polite">Checking backend…</div>;
-  if (health.error) return <div className="status bad" role="status" aria-live="polite">{health.error}</div>;
-  if (!health.model_loaded) return <div className="status bad" role="status" aria-live="polite">Model not available: {health.message}</div>;
-  const test = health.metrics?.test;
+function Status({ health }) {
+  const state = health === null ? "wait" : health.model_loaded ? "on" : "off";
+  const text = { wait: "Connecting", on: "Model online", off: "Model offline" }[state];
   return (
-    <div className="status ok" role="status" aria-live="polite">
-      <span className="dot" /> {health.model} ready
-      {test && <> · test EER {pct(test.eer, 2)}</>}
-      {health.train_info?.languages && <> · {health.train_info.languages.join(", ")}</>}
-    </div>
+    <span className={`status ${state}`} role="status" aria-live="polite" title={health?.error || health?.message || ""}>
+      <i aria-hidden="true" />{text}
+    </span>
   );
 }
 
 export default function App() {
   const [health, setHealth] = useState(null);
-  const refreshHealth = () => getHealth().then(setHealth);
-
-  useEffect(() => {
-    refreshHealth();
-  }, []);
+  const refresh = useCallback(() => getHealth().then(setHealth), []);
+  useEffect(() => { refresh(); }, [refresh]);
+  const test = health?.metrics?.test;
 
   return (
     <>
-      <a className="skip-link" href="#detector">Skip to the detector</a>
-      <Nav health={health} />
-      <main>
-        <Hero health={health} />
-        <Stats health={health} />
+      <a className="skip" href="#instrument">Skip to the detector</a>
+      <header className="bar">
+        <a className="mark" href="#top" aria-label="FakeAudio Shield, top of page">FAKEAUDIO<span>/</span>SHIELD</a>
+        <nav aria-label="Sections">
+          <a href="#instrument">Detector</a>
+          <a href="#pipeline">Signal chain</a>
+          <a href="#measurements">Measurements</a>
+          <a href="#limits">Limits</a>
+          <a href="#data">Data</a>
+        </nav>
+        <div className="bar-right">
+          <span className="bar-model hide-sm">W2V2-B/L6 · LCNN</span>
+          <Status health={health} />
+        </div>
+      </header>
 
-        <section className="section detector-section" id="detector">
-          <div className="container">
-            <div className="section-head">
-              <div className="eyebrow">Detector</div>
-              <h2>Analyse a recording</h2>
-              <p>Upload your own file or start with one of the sample clips the model has never heard before.</p>
-              <DetectorStatus health={health} />
+      <main id="top">
+        <div className="intro">
+          <h1>Is this voice <em>human?</em></h1>
+          <div className="intro-side">
+            <p>
+              Voice cloning needs only a few seconds of someone's speech. Drop in a recording and
+              FakeAudio Shield estimates whether it is genuine or synthetic, and shows you exactly
+              what it measured.
+            </p>
+            <div className="intro-figure">
+              <b>{test ? `${(test.eer * 100).toFixed(2)} %` : "—"}</b>
+              <span>equal error rate on 13 voice generators the model never saw in training</span>
             </div>
-            <Detector health={health} onModelError={refreshHealth} />
           </div>
-        </section>
+        </div>
 
-        <HowItWorks />
-        <Results health={health} />
-        <UseCases />
-        <Roadmap />
-        <Team />
-        <FAQ />
+        <Instrument health={health} onBackendError={refresh} />
+
+        <div className="sheet">
+          <Pipeline />
+          <Measurements health={health} />
+          <Limits />
+          <DataPrivacy />
+        </div>
       </main>
-      <Footer />
+
+      <footer className="foot">
+        <span>FAKEAUDIO/SHIELD · research prototype · results are predictions, not proof</span>
+        <span className="hide-sm">Keys <kbd>1</kbd>–<kbd>5</kbd> samples · <kbd>U</kbd> upload · <kbd>P</kbd> play</span>
+      </footer>
     </>
   );
 }
