@@ -50,7 +50,8 @@ def asvspoof_items(root: Path) -> list[dict]:
             path = root / f"ASVspoof2019_LA_{asv_split}" / "flac" / f"{parts[1]}.flac" if len(parts) == 5 else None
             if path and path.exists():
                 items.append({"path": path, "label": config.LABELS.index(parts[4]), "lang": "English",
-                              "split": split, "cache_key": f"{asv_split}/{parts[1]}"})
+                              "split": split, "cache_key": f"{asv_split}/{parts[1]}",
+                              "attack": parts[3] if parts[3] != "-" else ""})
     return items
 
 
@@ -65,7 +66,8 @@ def indic_items(root: Path) -> list[dict]:
                 path = root / r["path"]
                 if path.exists():
                     items.append({"path": path, "label": config.LABELS.index(r["label"]), "lang": r["lang"],
-                                  "split": r["split"], "cache_key": f"indic/{Path(r['path']).with_suffix('')}"})
+                                  "split": r["split"], "cache_key": f"indic/{Path(r['path']).with_suffix('')}",
+                                  "attack": r.get("generator", "")})
     return items
 
 
@@ -112,6 +114,7 @@ def load_features(items: list[dict], cache_dir: Path, embedder_holder: list, bat
         "spec": torch.from_numpy(np.stack(spec)),
         "labels": torch.tensor([it["label"] for it in kept]),
         "langs": np.array([it["lang"] for it in kept]),
+        "attacks": np.array([it.get("attack", "") for it in kept]),   # spoofing system / generator
     }
 
 
@@ -144,6 +147,11 @@ def evaluate(model, data, batch_size=64) -> dict:
     result = summarise(y, scores)
     result["by_language"] = {lang: summarise(y[data["langs"] == lang], scores[data["langs"] == lang])
                              for lang in sorted(set(data["langs"]))}
+    # fake-detection rate per spoofing system (ASVspoof attack ID or IndicSynth generator)
+    attacks = data.get("attacks")
+    if attacks is not None:
+        result["by_attack"] = {str(a): summarise(y[attacks == a], scores[attacks == a])
+                               for a in sorted(set(attacks[y == 1])) if a}
     return result
 
 
