@@ -29,7 +29,10 @@ class Wav2Vec2Embedder:
     """Frozen Wav2Vec2 (wav2vec2-base). Downloads the weights from Hugging Face on first use."""
 
     def __init__(self):
-        self.model = Wav2Vec2Model.from_pretrained(config.W2V_MODEL_NAME)
+        try:   # use the local Hugging Face cache first, so the demo works without internet
+            self.model = Wav2Vec2Model.from_pretrained(config.W2V_MODEL_NAME, local_files_only=True)
+        except OSError:
+            self.model = Wav2Vec2Model.from_pretrained(config.W2V_MODEL_NAME)
         # Only layers up to W2V_LAYER are needed; dropping the rest makes CPU inference faster
         # and gives exactly the same hidden_states[W2V_LAYER].
         self.model.encoder.layers = self.model.encoder.layers[:config.W2V_LAYER]

@@ -23,6 +23,18 @@ def pipeline_settings() -> dict:
     return {k: getattr(config, k) for k in PIPELINE_KEYS}
 
 
+def calibrate(p, threshold: float):
+    """Map raw P(spoof) so the dev-calibrated decision threshold sits at 0.5.
+
+    Piecewise-linear and monotonic, so rankings (and EER) are unchanged; it only moves the
+    point where the verdict flips, which train.py chose on the dev set (equal-error point).
+    """
+    import numpy as np
+    p = np.asarray(p, dtype=float)
+    t = min(max(threshold, 1e-6), 1 - 1e-6)
+    return np.where(p >= t, 0.5 + 0.5 * (p - t) / (1 - t), 0.5 * p / t)
+
+
 class ModelNotReady(RuntimeError):
     pass
 
@@ -32,6 +44,8 @@ class Detector:
         self.checkpoint_path = checkpoint
         self.lcnn = None
         self.meta = {}
+        self.report = None
+        self.threshold = 0.5
         self.embedder = None
         self.load_error = None
         self._lock = threading.Lock()
@@ -53,7 +67,8 @@ class Detector:
                                    "than app/config.py. Retrain the model.")
                 return
 
-            lcnn = FakeAudioLCNN()
+            # checkpoints from before the lighter architecture have no "arch" entry
+            lcnn = FakeAudioLCNN(**ckpt.get("arch", {"proj_dim": 128, "time_pool": 1}))
             lcnn.load_state_dict(ckpt["state_dict"])
             lcnn.eval()
             embedder = Wav2Vec2Embedder()
@@ -70,6 +85,8 @@ class Detector:
         self.lcnn = lcnn
         self.lcnn.eval()
         self.meta = {k: ckpt.get(k) for k in ("metrics", "train_info", "trained_at")}
+        self.report = ckpt.get("report")   # full evaluation report for the results page
+        self.threshold = float(ckpt.get("threshold", 0.5))   # dev-calibrated raw cut-off
         self.embedder = embedder
 
     @property
@@ -100,7 +117,9 @@ class Detector:
             logits = self.lcnn(torch.from_numpy(w2v), torch.from_numpy(spec))
         probs = torch.softmax(logits, dim=1).numpy()          # (n_segments, 2)
 
-        p_spoof = float(np.mean(probs[:, 1]))                 # average over segments
+        # average raw P(spoof) over segments, then calibrate so the dev-chosen threshold sits at 0.5
+        p_spoof = float(calibrate(np.mean(probs[:, 1]), self.threshold))
+        seg_p = calibrate(probs[:, 1], self.threshold)
         label = "spoof" if p_spoof >= 0.5 else "bonafide"
         return {
             "label": label,
@@ -108,8 +127,8 @@ class Detector:
             "confidence": p_spoof if label == "spoof" else 1 - p_spoof,
             "probabilities": {"bonafide": 1 - p_spoof, "spoof": p_spoof},
             "segments": [
-                {"start": round(a, 2), "end": round(b, 2), "spoof_probability": float(p[1])}
-                for (a, b, _), p in zip(segs, probs)
+                {"start": round(a, 2), "end": round(b, 2), "spoof_probability": float(p)}
+                for (a, b, _), p in zip(segs, seg_p)
             ],
             "audio": {
                 "original_sample_rate": orig_sr,

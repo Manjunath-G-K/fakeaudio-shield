@@ -5,6 +5,7 @@
 GET  /api/health   -> is the trained model loaded? (+ its measured metrics)
 POST /api/predict  -> upload an audio file, get Real/Bona-fide vs AI-generated/Spoof
 """
+import json
 import logging
 import os
 import tempfile
@@ -42,6 +43,25 @@ app.add_middleware(
 @app.get("/api/health")
 def health():
     return detector.status()
+
+
+@app.get("/api/report")
+def report():
+    """Full evaluation report written by train.py / evaluate.py into the checkpoint."""
+    if not detector.ready:
+        raise HTTPException(503, detector.load_error)
+    if not detector.report:
+        raise HTTPException(404, "This checkpoint has no evaluation report. Run: python evaluate.py")
+    return detector.report
+
+
+@app.get("/api/data-size-study")
+def data_size_study():
+    """Learning curve from data_size_study.py (read from disk on each request)."""
+    path = config.CHECKPOINT_PATH.with_name("data_size_study.json")
+    if not path.exists():
+        raise HTTPException(404, "Run: python data_size_study.py")
+    return json.loads(path.read_text())
 
 
 @app.post("/api/predict")
