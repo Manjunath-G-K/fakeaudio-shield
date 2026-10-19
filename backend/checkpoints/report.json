@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T19:08:36",
+  "generated_at": "2026-10-19T19:34:37",
   "model": {
     "name": "Wav2Vec2 (wav2vec2-base, frozen) + LCNN",
     "frontend": "facebook/wav2vec2-base, transformer layer 6, frozen (768 values / 20 ms)",
@@ -13,7 +13,8 @@
     "segment_seconds": 4.0,
     "threshold": 0.5,
     "raw_threshold": 0.423,
-    "calibration": "Raw P(spoof) is re-mapped so the dev-set equal-error point (languages weighted equally) sits at 0.5."
+    "calibration": "Raw P(spoof) is re-mapped so the dev-set equal-error point (languages weighted equally) sits at 0.5.",
+    "routing": "The language chosen on the website selects the model: English uses the English specialist; every other language uses the multilingual model. Specialists were chosen on dev EER."
   },
   "training": {
     "epochs_run": 6,
@@ -108,40 +109,40 @@
     "shortcut_probe": "Recording-condition check: a simple classifier that only sees the average spectrum and noise floor. If it reaches EER <= 10%, the language is capped at 'experimental'."
   },
   "overall": {
-    "eer": 0.10603448275862071,
-    "accuracy": 0.8905172413793103,
-    "macro_eer": 0.03369703837703339,
-    "macro_accuracy": 0.9599146228834412,
-    "bonafide_correct": 523,
+    "eer": 0.0646551724137931,
+    "accuracy": 0.9318965517241379,
+    "macro_eer": 0.01984367094310329,
+    "macro_accuracy": 0.970144801911574,
+    "bonafide_correct": 569,
     "bonafide_total": 580,
-    "spoof_correct": 510,
+    "spoof_correct": 512,
     "spoof_total": 580
   },
   "languages": {
     "English": {
       "status": "experimental",
       "test": {
-        "eer": 0.16112531969309463,
-        "accuracy": 0.8439897698209718,
-        "bonafide_correct": 338,
+        "eer": 0.07800511508951405,
+        "accuracy": 0.9053708439897699,
+        "bonafide_correct": 384,
         "bonafide_total": 391,
-        "spoof_correct": 322,
+        "spoof_correct": 324,
         "spoof_total": 391,
         "eer_ci": [
-          0.1304,
-          0.1816
+          0.0645,
+          0.1043
         ],
         "accuracy_ci": [
-          0.8169,
-          0.8677
+          0.8828,
+          0.924
         ],
         "real_passed_ci": [
-          0.827,
-          0.8949
+          0.9635,
+          0.9913
         ],
         "fake_caught_ci": [
-          0.7826,
-          0.8581
+          0.7881,
+          0.8628
         ],
         "speakers": 67,
         "by_attack": {
@@ -163,10 +164,10 @@
           },
           "A09": {
             "eer": null,
-            "accuracy": 0.9333333333333333,
+            "accuracy": 0.9,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 28,
+            "spoof_correct": 27,
             "spoof_total": 30
           },
           "A10": {
@@ -179,10 +180,10 @@
           },
           "A11": {
             "eer": null,
-            "accuracy": 0.7586206896551724,
+            "accuracy": 0.8275862068965517,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 22,
+            "spoof_correct": 24,
             "spoof_total": 29
           },
           "A12": {
@@ -195,34 +196,34 @@
           },
           "A13": {
             "eer": null,
-            "accuracy": 0.8666666666666667,
+            "accuracy": 1.0,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 26,
+            "spoof_correct": 30,
             "spoof_total": 30
           },
           "A14": {
             "eer": null,
-            "accuracy": 0.8709677419354839,
+            "accuracy": 0.8387096774193549,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 27,
+            "spoof_correct": 26,
             "spoof_total": 31
           },
           "A15": {
             "eer": null,
-            "accuracy": 0.8709677419354839,
+            "accuracy": 0.8064516129032258,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 27,
+            "spoof_correct": 25,
             "spoof_total": 31
           },
           "A16": {
             "eer": null,
-            "accuracy": 0.8666666666666667,
+            "accuracy": 0.8,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 26,
+            "spoof_correct": 24,
             "spoof_total": 30
           },
           "A17": {
@@ -235,10 +236,10 @@
           },
           "A18": {
             "eer": null,
-            "accuracy": 0.8333333333333334,
+            "accuracy": 0.9,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 25,
+            "spoof_correct": 27,
             "spoof_total": 30
           },
           "A19": {
@@ -252,52 +253,52 @@
         }
       },
       "dev": {
-        "eer": 0.08897243107769423,
-        "accuracy": 0.8859649122807017,
-        "bonafide_correct": 322,
+        "eer": 0.020050125313283207,
+        "accuracy": 0.9799498746867168,
+        "bonafide_correct": 391,
         "bonafide_total": 399,
-        "spoof_correct": 385,
+        "spoof_correct": 391,
         "spoof_total": 399,
         "eer_ci": [
-          0.0689,
-          0.109
+          0.0125,
+          0.0338
         ],
         "accuracy_ci": [
-          0.862,
-          0.9062
+          0.9677,
+          0.9876
         ],
         "real_passed_ci": [
-          0.7654,
-          0.8427
+          0.9609,
+          0.9898
         ],
         "fake_caught_ci": [
-          0.942,
-          0.979
+          0.9609,
+          0.9898
         ],
         "speakers": 20,
         "by_attack": {
           "A01": {
             "eer": null,
-            "accuracy": 0.9848484848484849,
+            "accuracy": 1.0,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 65,
+            "spoof_correct": 66,
             "spoof_total": 66
           },
           "A02": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 67,
+            "spoof_total": 67
+          },
+          "A03": {
             "eer": null,
             "accuracy": 0.9850746268656716,
             "bonafide_correct": 0,
             "bonafide_total": 0,
             "spoof_correct": 66,
-            "spoof_total": 67
-          },
-          "A03": {
-            "eer": null,
-            "accuracy": 0.9701492537313433,
-            "bonafide_correct": 0,
-            "bonafide_total": 0,
-            "spoof_correct": 65,
             "spoof_total": 67
           },
           "A04": {
@@ -318,19 +319,20 @@
           },
           "A06": {
             "eer": null,
-            "accuracy": 0.9242424242424242,
+            "accuracy": 0.9696969696969697,
             "bonafide_correct": 0,
             "bonafide_total": 0,
-            "spoof_correct": 61,
+            "spoof_correct": 64,
             "spoof_total": 66
           }
         }
       },
       "train": {
-        "bonafide": 1247,
-        "spoof": 1247
+        "bonafide": 1250,
+        "spoof": 1250
       },
       "test_condition": "ASVspoof 2019 LA evaluation set: unseen speakers and 13 voice-generation systems (A07-A19) never seen in training.",
+      "model": "english",
       "shortcut_probe": {
         "channel_eer": 0.4367,
         "test_clips": 600,
@@ -430,6 +432,7 @@
         "spoof": 122
       },
       "test_condition": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
+      "model": "multilingual",
       "shortcut_probe": {
         "channel_eer": 0.24,
         "test_clips": 100,
@@ -529,6 +532,7 @@
         "spoof": 169
       },
       "test_condition": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
+      "model": "multilingual",
       "shortcut_probe": {
         "channel_eer": 0.1333,
         "test_clips": 60,
@@ -628,6 +632,7 @@
         "spoof": 134
       },
       "test_condition": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
+      "model": "multilingual",
       "shortcut_probe": {
         "channel_eer": 0.1538,
         "test_clips": 104,
@@ -727,6 +732,7 @@
         "spoof": 118
       },
       "test_condition": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
+      "model": "multilingual",
       "shortcut_probe": {
         "channel_eer": 0.1585,
         "test_clips": 82,
@@ -826,6 +832,7 @@
         "spoof": 161
       },
       "test_condition": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
+      "model": "multilingual",
       "shortcut_probe": {
         "channel_eer": 0.125,
         "test_clips": 32,
@@ -1011,5 +1018,158 @@
       "Audio is standardised at load time (16 kHz mono, silence trimmed, peak-normalised); transcripts are not used, so no text normalisation is applied.",
       "Splits are speaker-disjoint (checked above). ASVspoof test = eval set with attacks A07-A19 unseen in training."
     ]
+  },
+  "models": {
+    "multilingual": {
+      "name": "Multilingual",
+      "checkpoint": "fakeaudio_lcnn.pt",
+      "arch": {
+        "proj_dim": 64,
+        "time_pool": 2
+      },
+      "trainable_parameters": 260450,
+      "raw_threshold": 0.423,
+      "languages": [
+        "English",
+        "Hindi",
+        "Kannada",
+        "Malayalam",
+        "Tamil",
+        "Telugu"
+      ],
+      "training": {
+        "epochs_run": 6,
+        "best_epoch": 3,
+        "max_epochs": 12,
+        "patience": 3,
+        "batch_size": 32,
+        "learning_rate": 0.0003,
+        "optimizer": "AdamW (weight decay 1e-4)",
+        "balancing": "loss weighted so every (language, label) group counts equally",
+        "model_selection": "lowest mean dev EER across languages",
+        "seconds": 1755,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 0.6728105576511287,
+            "dev_eer": 0.34174757281553403,
+            "dev_macro_eer": 0.13736206982059385,
+            "seconds": 229
+          },
+          {
+            "epoch": 2,
+            "loss": 0.3318177302607141,
+            "dev_eer": 0.1786407766990291,
+            "dev_macro_eer": 0.03759398496240601,
+            "seconds": 205
+          },
+          {
+            "epoch": 3,
+            "loss": 0.12030179817315434,
+            "dev_eer": 0.07475728155339806,
+            "dev_macro_eer": 0.018033866718077243,
+            "seconds": 288
+          },
+          {
+            "epoch": 4,
+            "loss": 0.041259544771231484,
+            "dev_eer": 0.04660194174757282,
+            "dev_macro_eer": 0.019014230112628278,
+            "seconds": 306
+          },
+          {
+            "epoch": 5,
+            "loss": 0.02649194778643476,
+            "dev_eer": 0.04854368932038834,
+            "dev_macro_eer": 0.019014230112628278,
+            "seconds": 310
+          },
+          {
+            "epoch": 6,
+            "loss": 0.013684186952686016,
+            "dev_eer": 0.0466019417475728,
+            "dev_macro_eer": 0.01901423011262828,
+            "seconds": 354
+          }
+        ],
+        "train_counts": {
+          "English": {
+            "bonafide": 1247,
+            "spoof": 1247
+          },
+          "Hindi": {
+            "bonafide": 122,
+            "spoof": 122
+          },
+          "Kannada": {
+            "bonafide": 169,
+            "spoof": 169
+          },
+          "Malayalam": {
+            "bonafide": 134,
+            "spoof": 134
+          },
+          "Tamil": {
+            "bonafide": 118,
+            "spoof": 118
+          },
+          "Telugu": {
+            "bonafide": 161,
+            "spoof": 161
+          }
+        },
+        "device": "CPU"
+      }
+    },
+    "english": {
+      "name": "English specialist",
+      "checkpoint": "fakeaudio_english.pt",
+      "arch": {
+        "proj_dim": 128,
+        "time_pool": 1
+      },
+      "trainable_parameters": 330146,
+      "raw_threshold": 0.0916,
+      "languages": [
+        "English"
+      ],
+      "training": {
+        "epochs_run": 3,
+        "best_epoch": 3,
+        "max_epochs": 10,
+        "patience": 3,
+        "batch_size": 32,
+        "learning_rate": 0.0003,
+        "optimizer": "AdamW (weight decay 1e-4)",
+        "balancing": "class-weighted loss (English only)",
+        "model_selection": "lowest dev EER; run stopped after epoch 3 because each epoch took 9-20 min on this CPU",
+        "seconds": 2363,
+        "device": "CPU",
+        "history": [
+          {
+            "epoch": 1,
+            "dev_eer": 0.1938,
+            "dev_macro_eer": 0.1938
+          },
+          {
+            "epoch": 2,
+            "dev_eer": 0.0275,
+            "dev_macro_eer": 0.0275
+          },
+          {
+            "epoch": 3,
+            "dev_eer": 0.02,
+            "dev_macro_eer": 0.02
+          }
+        ],
+        "train_counts": {
+          "English": {
+            "bonafide": 1250,
+            "spoof": 1250
+          }
+        },
+        "note": "Trained 13 Oct 2026 with the 128-d / full-time-resolution LCNN; re-evaluated today on the cleaned manifest."
+      }
+    }
   }
 }

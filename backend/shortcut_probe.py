@@ -27,7 +27,7 @@ from sklearn.preprocessing import StandardScaler
 
 from app import config
 from app.preprocess import AudioError, load_audio, preprocess
-from train import atomic_replace, compute_eer, read_manifest
+from train import compute_eer, plain, read_manifest, save_checkpoint
 
 CAP = 0.10            # channel-only EER at or below this caps the language at "experimental"
 MAX_PER_CLASS = 300   # per language, per split, per class (keeps the run to a few minutes)
@@ -71,27 +71,29 @@ def main():
     out.write_text(json.dumps({"cap": CAP, "method": __doc__.split("\n\n")[1].strip(), "results": results}, indent=2))
 
     # fold into the shipped report: cap status where recording conditions alone separate the classes
-    ckpt = torch.load(config.CHECKPOINT_PATH, map_location="cpu", weights_only=False)
+    ckpt = torch.load(config.CHECKPOINT_PATH, map_location="cpu", weights_only=True)
     rep = ckpt.get("report")
     if rep:
-        for lang, r in results.items():
-            L = rep["languages"].get(lang)
-            if not L:
-                continue
-            L["shortcut_probe"] = r
-            if r["shortcut_risk"] and L["status"] == "supported":
-                L["status"] = "experimental"
-                L["status_reason"] = (f"Real and AI clips can be told apart by recording conditions alone "
-                                      f"(channel-only EER {r['channel_eer'] * 100:.1f}%), so this score may be optimistic.")
-        rep["metric_definitions"]["shortcut_probe"] = ("Recording-condition check: a simple classifier that only sees the average "
-                                                       f"spectrum and noise floor. If it reaches EER <= {CAP * 100:.0f}%, the language "
-                                                       "is capped at 'experimental'.")
-        tmp = config.CHECKPOINT_PATH.with_suffix(".tmp")
-        torch.save(ckpt, tmp)
-        atomic_replace(tmp, config.CHECKPOINT_PATH)
-        config.CHECKPOINT_PATH.with_name("report.json").write_text(json.dumps(rep, indent=2))
+        apply_to_report(rep, results)
+        save_checkpoint(ckpt, config.CHECKPOINT_PATH)
+        config.CHECKPOINT_PATH.with_name("report.json").write_text(json.dumps(plain(rep), indent=2))
         print("report updated with shortcut-probe results")
 
+
+def apply_to_report(rep: dict, results: dict, cap: float = CAP):
+    """Add channel-only results to each language and cap "supported" where they reveal a shortcut."""
+    for lang, r in results.items():
+        L = rep["languages"].get(lang)
+        if not L:
+            continue
+        L["shortcut_probe"] = r
+        if r["shortcut_risk"] and L["status"] == "supported":
+            L["status"] = "experimental"
+            L["status_reason"] = (f"Real and AI clips can be told apart by recording conditions alone "
+                                  f"(channel-only EER {r['channel_eer'] * 100:.1f}%), so this score may be optimistic.")
+    rep["metric_definitions"]["shortcut_probe"] = ("Recording-condition check: a simple classifier that only sees the average "
+                                                   f"spectrum and noise floor. If it reaches EER <= {cap * 100:.0f}%, the language "
+                                                   "is capped at 'experimental'.")
 
 if __name__ == "__main__":
     main()

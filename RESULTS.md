@@ -1,23 +1,21 @@
 # FakeAudio Shield: measured results
 
-_Generated from `backend/checkpoints/report.json` (2026-10-19T19:08:36). Do not edit by hand: run `python make_results_md.py`._
+_Generated from `backend/checkpoints/report.json` (2026-10-19T19:34:37). Do not edit by hand: run `python make_results_md.py`._
 
 ## Language support
 
-| Language | Status | Test EER (95% CI) | Accuracy (95% CI) | Real passed | AI caught | Test clips (real + AI) | Test speakers | Recording check (channel-only EER) |
-|---|---|---|---|---|---|---|---|---|
-| English | **experimental** | 16.11% (13.0–18.2%) | 84.4% (81.7–86.8%) | 338/391 | 322/391 | 391 + 391 | 67 | 43.7% |
-| Hindi | **supported** | 0.00% (0.0–0.0%) | 100.0% (96.3–100.0%) | 50/50 | 50/50 | 50 + 50 | 20 | 24.0% |
-| Kannada | **experimental** | 1.67% (0.0–11.7%) | 98.3% (91.1–99.7%) | 30/30 | 29/30 | 30 + 30 | 7 | 13.3% |
-| Malayalam | **experimental** | 0.00% (0.0–0.0%) | 100.0% (96.4–100.0%) | 52/52 | 52/52 | 52 + 52 | 3 | 15.4% |
-| Tamil | **supported** | 2.44% (0.0–6.1%) | 96.3% (89.8–98.8%) | 38/41 | 41/41 | 41 + 41 | 22 | 15.8% |
-| Telugu | **supported** | 0.00% (0.0–0.0%) | 96.9% (84.3–99.5%) | 15/16 | 16/16 | 16 + 16 | 10 | 12.5% |
-| Marathi | not supported | – | – | – | – | – | – | – |
-|  | _no data collected yet_ | | | | | | | |
-| Bengali | not supported | – | – | – | – | – | – | – |
-|  | _no data collected yet_ | | | | | | | |
+| Language | Status | Model | Test EER (95% CI) | Accuracy (95% CI) | Real passed | AI caught | Test clips (real + AI) | Test speakers | Recording check (channel-only EER) |
+|---|---|---|---|---|---|---|---|---|---|
+| English | **experimental** | English specialist | 7.80% (6.5–10.4%) | 90.5% (88.3–92.4%) | 384/391 | 324/391 | 391 + 391 | 67 | 43.7% |
+| Hindi | **supported** | Multilingual | 0.00% (0.0–0.0%) | 100.0% (96.3–100.0%) | 50/50 | 50/50 | 50 + 50 | 20 | 24.0% |
+| Kannada | **experimental** | Multilingual | 1.67% (0.0–11.7%) | 98.3% (91.1–99.7%) | 30/30 | 29/30 | 30 + 30 | 7 | 13.3% |
+| Malayalam | **experimental** | Multilingual | 0.00% (0.0–0.0%) | 100.0% (96.4–100.0%) | 52/52 | 52/52 | 52 + 52 | 3 | 15.4% |
+| Tamil | **supported** | Multilingual | 2.44% (0.0–6.1%) | 96.3% (89.8–98.8%) | 38/41 | 41/41 | 41 + 41 | 22 | 15.8% |
+| Telugu | **supported** | Multilingual | 0.00% (0.0–0.0%) | 96.9% (84.3–99.5%) | 15/16 | 16/16 | 16 + 16 | 10 | 12.5% |
 
 Status rule: supported: upper 95% bound of test EER <= 10% and at least 10 different test speakers; experimental: test EER <= 25%; otherwise not supported.
+
+Model routing: The language chosen on the website selects the model: English uses the English specialist; every other language uses the multilingual model. Specialists were chosen on dev EER.
 
 Test conditions:
 
@@ -40,7 +38,7 @@ Test conditions:
 
 ## Per-attack / per-generator detection (test set)
 
-**English**: A07 20/28, A08 29/30, A09 28/30, A10 10/31, A11 22/29, A12 28/31, A13 26/30, A14 27/31, A15 27/31, A16 26/30, A17 30/30, A18 25/30, A19 24/30
+**English**: A07 20/28, A08 29/30, A09 27/30, A10 10/31, A11 24/29, A12 28/31, A13 30/30, A14 26/31, A15 25/31, A16 24/30, A17 30/30, A18 27/30, A19 24/30
 
 **Hindi**: freevc24 30/30, xtts_v2 20/20
 
@@ -84,11 +82,20 @@ Sources and licences:
 
 - Speech model: facebook/wav2vec2-base, transformer layer 6, frozen (768 values / 20 ms)
 - Spectral features: 80 log-mel + 20 MFCC per 20 ms (Librosa)
-- Classifier: Light CNN with Max-Feature-Map, 2 classes (260,450 trainable parameters, arch {'proj_dim': 64, 'time_pool': 2})
+- Classifier: Light CNN with Max-Feature-Map, 2 classes
 - Input: 4.0 s segments, scores averaged; threshold P(AI) ≥ 0.5
+
+**Multilingual** (`fakeaudio_lcnn.pt`): trained on English, Hindi, Kannada, Malayalam, Tamil, Telugu; 260,450 trainable parameters, arch {'proj_dim': 64, 'time_pool': 2}
+
 - Training: 6 epochs (best 3), 29 min on CPU, AdamW (weight decay 1e-4), lr 0.0003, batch 32
 - Balancing: loss weighted so every (language, label) group counts equally
 - Model selection: lowest mean dev EER across languages
+
+**English specialist** (`fakeaudio_english.pt`): trained on English; 330,146 trainable parameters, arch {'proj_dim': 128, 'time_pool': 1}
+
+- Training: 3 epochs (best 3), 39 min on CPU, AdamW (weight decay 1e-4), lr 0.0003, batch 32
+- Balancing: class-weighted loss (English only)
+- Model selection: lowest dev EER; run stopped after epoch 3 because each epoch took 9-20 min on this CPU
 
 ## How much training data is needed? (learning curve)
 

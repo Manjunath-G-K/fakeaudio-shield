@@ -45,6 +45,28 @@ TEST_CONDITIONS = {
 }
 
 
+def plain(x):
+    """Convert numpy values (and dict keys) to built-in Python types, so checkpoints contain only
+    tensors and plain data and the API can load them with torch.load(weights_only=True)."""
+    if isinstance(x, dict):
+        return {str(k) if isinstance(k, np.generic) else k: plain(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [plain(v) for v in x]
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, np.generic):
+        return x.item()
+    return x
+
+
+def save_checkpoint(ckpt: dict, path: Path):
+    """Write atomically, so the API never loads a half-written file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    torch.save(plain(ckpt), tmp)
+    atomic_replace(tmp, path)
+
+
 def atomic_replace(tmp: Path, target: Path, attempts: int = 20):
     """os.replace with retries: on Windows, antivirus scanners briefly lock freshly written files."""
     for i in range(attempts):
@@ -187,7 +209,12 @@ def dev_threshold(model, dev) -> float:
 
 
 def evaluate(model, data, with_ci: bool = False, threshold: float = THRESHOLD) -> dict:
-    s = calibrate(scores_of(model, data), threshold)     # verdict flips at 0.5 after calibration
+    # verdict flips at 0.5 after calibration
+    return evaluate_scores(calibrate(scores_of(model, data), threshold), data, with_ci)
+
+
+def evaluate_scores(s: np.ndarray, data, with_ci: bool = False) -> dict:
+    """Metrics (overall, per language, per attack) for calibrated P(spoof) scores s."""
     y = data["labels"].numpy()
     langs, attacks = data["langs"], data["attacks"]
     result = summarise(y, s, with_ci)
@@ -330,9 +357,7 @@ def main():
     history, t_start = [], time.time()
 
     def save(state, metrics, epoch, report=None, threshold=THRESHOLD):
-        config.CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = config.CHECKPOINT_PATH.with_suffix(".tmp")
-        torch.save({
+        save_checkpoint({
             "state_dict": state, "arch": model.arch, "pipeline": pipeline_settings(), "metrics": metrics,
             "train_info": {
                 "datasets": "; ".join(sorted({s for l in langs for s in (dataset_report or {}).get("languages", {}).get(l, {}).get("sources", [])})) or "see report",
@@ -341,8 +366,7 @@ def main():
             },
             "report": report, "threshold": threshold,
             "trained_at": datetime.now().isoformat(timespec="seconds"),
-        }, tmp)
-        atomic_replace(tmp, config.CHECKPOINT_PATH)   # atomic, so the API never loads a half-written file
+        }, config.CHECKPOINT_PATH)
 
     for epoch in range(1, args.epochs + 1):
         model.train()
@@ -391,7 +415,7 @@ def main():
                 "train_counts": dict(train_counts), "device": "CPU"}
     report = build_report(model, metrics, dict(train_counts), training, dataset_report, threshold)
     save(best_state, metrics, best_epoch, report, threshold)
-    Path(config.CHECKPOINT_PATH.with_name("report.json")).write_text(json.dumps(report, indent=2))
+    Path(config.CHECKPOINT_PATH.with_name("report.json")).write_text(json.dumps(plain(report), indent=2))
     print(f"Saved checkpoint and report to {config.CHECKPOINT_PATH.parent}")
 
 

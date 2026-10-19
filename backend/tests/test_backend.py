@@ -147,6 +147,31 @@ def test_known_samples_are_classified(client, name, truth):
 
 
 @needs_model
+def test_language_selects_the_model(client):
+    body = client.get("/api/health").json()
+    assert "English" in body["languages"]
+    clip = (SAMPLES / "real-voice-1.flac").read_bytes()
+    for lang, expected in [("English", "English specialist"), ("Hindi", "Multilingual"), (None, "Multilingual")]:
+        data = {"language": lang} if lang else {}
+        r = client.post("/api/predict", files={"file": ("a.flac", clip, "audio/flac")}, data=data)
+        assert r.status_code == 200 and r.json()["model"] == expected, lang
+
+
+@needs_model
+def test_unknown_language_is_400(client):
+    r = client.post("/api/predict", files={"file": ("a.flac", (SAMPLES / "real-voice-1.flac").read_bytes(), "audio/flac")},
+                    data={"language": "Klingon"})
+    assert r.status_code == 400 and "Supported" in r.json()["detail"]
+
+
+@needs_model
+def test_checkpoints_load_without_pickle():
+    for path in [config.CHECKPOINT_PATH, *config.LANGUAGE_CHECKPOINTS.values()]:
+        if path.exists():
+            torch.load(path, map_location="cpu", weights_only=True)
+
+
+@needs_model
 def test_report_has_per_language_metrics(client):
     r = client.get("/api/report")
     if r.status_code == 404:
@@ -158,3 +183,6 @@ def test_report_has_per_language_metrics(client):
         assert t["bonafide_total"] > 0 and t["spoof_total"] > 0, lang
         assert 0 <= t["eer"] <= 1 and t["eer_ci"][0] <= t["eer"] <= t["eer_ci"][1], lang
         assert L["status"] in ("supported", "experimental", "not supported")
+        assert L["model"] in rep["models"], lang
+        if L["status"] == "supported":
+            assert t["eer_ci"][1] <= 0.10 and t["speakers"] >= 10, lang

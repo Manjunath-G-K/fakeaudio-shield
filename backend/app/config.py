@@ -7,7 +7,14 @@ import os
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-CHECKPOINT_PATH = BACKEND_DIR / "checkpoints" / "fakeaudio_lcnn.pt"
+FRONTEND_DIST = Path(os.getenv("FAKEAUDIO_FRONTEND_DIST", BACKEND_DIR.parent / "frontend" / "dist"))
+CHECKPOINT_PATH = BACKEND_DIR / "checkpoints" / "fakeaudio_lcnn.pt"   # multilingual model (default)
+
+# Languages scored by their own specialist model instead of the multilingual one. Chosen on
+# the dev split, never on test: English dev EER 2.0% (English-only model) vs 8.9% (multilingual).
+LANGUAGE_CHECKPOINTS = {
+    "English": BACKEND_DIR / "checkpoints" / "fakeaudio_english.pt",
+}
 
 # --- Preprocessing -----------------------------------------------------------
 SAMPLE_RATE = 16_000          # Wav2Vec2 expects 16 kHz mono audio
