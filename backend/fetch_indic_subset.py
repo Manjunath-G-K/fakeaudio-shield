@@ -31,7 +31,7 @@ from pathlib import Path
 
 from huggingface_hub import get_token
 
-LANGUAGES = ["Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "Marathi", "Bengali"]
+LANGUAGES = ["Hindi", "Kannada", "Tamil", "Telugu", "Malayalam"]
 ROWS_API = "https://datasets-server.huggingface.co/rows"
 SOURCES = {
     # kind: (dataset, config name for a language, splits, audio column, speaker column)
