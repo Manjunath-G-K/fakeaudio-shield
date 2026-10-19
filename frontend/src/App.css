@@ -444,3 +444,6 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
 .curve-line.dev { stroke: #b9adf7; stroke-dasharray: 4 4; }
 .curve-label.end { text-anchor: end; }
 .curve-label.strong { fill: var(--text); font-weight: 700; font-size: 11px; }
+
+.warn-text { color: var(--warn); font-weight: 700; }
+.ok-text { color: var(--real-ink); }

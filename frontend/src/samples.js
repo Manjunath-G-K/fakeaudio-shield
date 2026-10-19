@@ -1,6 +1,10 @@
 // Sample clips served from /public/samples. All are from TEST splits: never heard during training.
-// English: ASVspoof 2019 LA eval (ODC-By). Indian languages: Kathbath (CC BY 4.0) / IndicSynth (CC BY-NC 4.0).
+// English: ASVspoof 2019 LA eval (ODC-By). Indian languages: Kathbath (CC BY 4.0) / IndicSynth (CC BY-NC 4.0),
+// exported by backend/export_samples.py into samples.generated.json.
+import generated from "./samples.generated.json";
+
 export const SAMPLES = {
+  ...generated,
   English: [
     { file: "real-voice-1.flac", name: "Real person (1)", detail: "Recorded human speech", truth: "bonafide" },
     { file: "real-voice-2.flac", name: "Real person (2)", detail: "Recorded human speech", truth: "bonafide" },

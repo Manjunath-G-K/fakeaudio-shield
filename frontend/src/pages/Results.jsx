@@ -136,7 +136,7 @@ export default function Results({ report, reload }) {
   const testClips = o.bonafide_total + o.spoof_total;
   const usedSources = new Set(Object.values(ds?.languages ?? {}).flatMap((d) => d.sources));
   const needWork = [
-    ...names.filter((n) => langs[n].status !== "supported").map((n) => ({ lang: n, why: `${STATUS[langs[n].status]}: test EER ${pct(langs[n].test.eer)} (95% CI ${ci(langs[n].test.eer_ci)}).` })),
+    ...names.filter((n) => langs[n].status !== "supported").map((n) => ({ lang: n, why: `${STATUS[langs[n].status]}: test EER ${pct(langs[n].test.eer)} (95% CI ${ci(langs[n].test.eer_ci)}).${langs[n].status_reason ? " " + langs[n].status_reason : ""}` })),
     ...ALL_LANGUAGES.filter((l) => !langs[l]).map((l) => ({ lang: l, why: ds?.excluded_languages?.[l] ? `Not trained: ${ds.excluded_languages[l]}.` : "Not collected yet." })),
   ];
 
@@ -163,7 +163,7 @@ export default function Results({ report, reload }) {
         <div className="table-wrap">
           <table className="r-table">
             <thead>
-              <tr><th>Language</th><th>Status</th><th>EER (95% CI)</th><th>Accuracy (95% CI)</th><th>Real passed</th><th>AI caught</th><th>Test clips</th><th>Speakers</th></tr>
+              <tr><th>Language</th><th>Status</th><th>EER (95% CI)</th><th>Accuracy (95% CI)</th><th>Real passed</th><th>AI caught</th><th>Test clips</th><th>Speakers</th><th title="EER of a simple classifier that only sees recording conditions">Recording check</th></tr>
             </thead>
             <tbody>
               {names.map((n) => {
@@ -178,13 +178,16 @@ export default function Results({ report, reload }) {
                     <td>{t.spoof_correct}/{t.spoof_total}</td>
                     <td>{t.bonafide_total} + {t.spoof_total}</td>
                     <td>{t.speakers}</td>
+                    <td>{langs[n].shortcut_probe ? (langs[n].shortcut_probe.shortcut_risk
+                      ? <span className="warn-text">⚠ {pct(langs[n].shortcut_probe.channel_eer)}</span>
+                      : <span className="ok-text">ok ({pct(langs[n].shortcut_probe.channel_eer)})</span>) : "–"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <p className="fineprint">Status rule: {report.metric_definitions?.support_rule}</p>
+        <p className="fineprint">Status rule: {report.metric_definitions?.support_rule} {report.metric_definitions?.shortcut_probe}</p>
       </Section>
 
       <Section id="explore" icon={Chart} title="Explore a language" sub="Where the model is strong and where it struggles.">

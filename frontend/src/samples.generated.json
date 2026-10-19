@@ -1,0 +1,72 @@
+{
+  "Hindi": [
+    {
+      "file": "hindi-real.flac",
+      "name": "Real person (Hindi)",
+      "detail": "Kathbath recording, unseen speaker",
+      "truth": "bonafide"
+    },
+    {
+      "file": "hindi-ai.wav",
+      "name": "AI voice (Hindi)",
+      "detail": "IndicSynth, FreeVC voice conversion",
+      "truth": "spoof"
+    }
+  ],
+  "Kannada": [
+    {
+      "file": "kannada-real.flac",
+      "name": "Real person (Kannada)",
+      "detail": "Kathbath recording, unseen speaker",
+      "truth": "bonafide"
+    },
+    {
+      "file": "kannada-ai.wav",
+      "name": "AI voice (Kannada)",
+      "detail": "IndicSynth, XTTS-v2 voice cloning",
+      "truth": "spoof"
+    }
+  ],
+  "Malayalam": [
+    {
+      "file": "malayalam-real.flac",
+      "name": "Real person (Malayalam)",
+      "detail": "Kathbath recording, unseen speaker",
+      "truth": "bonafide"
+    },
+    {
+      "file": "malayalam-ai.wav",
+      "name": "AI voice (Malayalam)",
+      "detail": "IndicSynth, FreeVC voice conversion",
+      "truth": "spoof"
+    }
+  ],
+  "Tamil": [
+    {
+      "file": "tamil-real.flac",
+      "name": "Real person (Tamil)",
+      "detail": "Kathbath recording, unseen speaker",
+      "truth": "bonafide"
+    },
+    {
+      "file": "tamil-ai.wav",
+      "name": "AI voice (Tamil)",
+      "detail": "IndicSynth, FreeVC voice conversion",
+      "truth": "spoof"
+    }
+  ],
+  "Telugu": [
+    {
+      "file": "telugu-real.flac",
+      "name": "Real person (Telugu)",
+      "detail": "Kathbath recording, unseen speaker",
+      "truth": "bonafide"
+    },
+    {
+      "file": "telugu-ai.wav",
+      "name": "AI voice (Telugu)",
+      "detail": "IndicSynth, XTTS-v2 voice cloning",
+      "truth": "spoof"
+    }
+  ]
+}

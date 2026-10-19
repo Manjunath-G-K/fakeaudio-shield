@@ -17,7 +17,8 @@ function languageNote(lang, report) {
   const acc = Math.round(t.accuracy * 100);
   const n = t.bonafide_total + t.spoof_total;
   const tone = L.status === "supported" ? "good" : "warn";
-  return { tone, text: `For ${lang}, the model classified ${acc}% of ${n} unseen test clips correctly (EER ${(t.eer * 100).toFixed(1)}%). Status: ${L.status}.` };
+  const caveat = L.shortcut_probe?.shortcut_risk ? " Caution: real and AI test clips for this language also differ in recording conditions, so this score may be optimistic." : "";
+  return { tone: caveat ? "warn" : tone, text: `For ${lang}, the model classified ${acc}% of ${n} unseen test clips correctly (EER ${(t.eer * 100).toFixed(1)}%). Status: ${L.status}.${caveat}` };
 }
 
 const TABS = [
@@ -119,8 +120,7 @@ function Result({ result, source, onAgain, lang, report }) {
 
 export default function Checker({ ready, onHistory, report, lang, setLang }) {
   const [tab, setTab] = useState("samples");
-  const sampleLangs = Object.keys(SAMPLES);
-  const sampleLang = SAMPLES[lang] ? lang : sampleLangs[0];
+  const sampleLang = SAMPLES[lang] ? lang : "English";
   const [source, setSource] = useState(null);     // { file, kind, sample? }
   const [phase, setPhase] = useState("pick");      // pick | review | checking | result
   const [result, setResult] = useState(null);
