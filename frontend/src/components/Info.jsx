@@ -27,16 +27,16 @@ export function Recent({ items }) {
 
 export function GoodToKnow({ report }) {
   const ref = useReveal();
-  const supported = Object.entries(report?.languages ?? {}).filter(([, L]) => L.status !== "not supported").map(([l]) => l);
+  const evaluated = Object.keys(report?.languages ?? {});
   const items = [
     { icon: Mic, title: "Works best with clear speech", text: "5–60 seconds of one person talking. Only the first 60 seconds of speech are checked." },
     { icon: Alert, title: "New AI voices can slip through", text: "It catches most voices like the ones it learned from, but misses some made by tools it has never seen." },
-    { icon: Globe, title: supported.length ? `Evaluated for ${supported.join(", ")}` : "Languages", text: "Other languages may still work, but they haven't been measured, so treat those results as unverified." },
-    { icon: Lock, title: "Your audio stays on this computer", text: "Everything runs locally. Uploaded files are deleted right after the check." },
+    { icon: Globe, title: evaluated.length ? `Measured for ${evaluated.join(", ")}` : "Pick the right language", text: "Choose the language spoken in the clip: it selects the model and the measured results that apply. Other languages are not supported." },
+    { icon: Lock, title: "Nothing is stored", text: "Uploads are written to a temporary file, analysed and deleted immediately. Self-host it to keep audio on your own machine." },
   ];
   return (
     <section className="section reveal" id="good-to-know" ref={ref}>
-      <div className="section-head"><h2>Good to know</h2></div>
+      <div className="section-head"><p className="kicker">Good to know</p><h2>Use it wisely</h2></div>
       <div className="know">
         {items.map(({ icon: Ico, title, text }) => (
           <div key={title} className="know-item">

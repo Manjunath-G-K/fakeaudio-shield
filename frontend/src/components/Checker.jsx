@@ -2,23 +2,55 @@ import { useEffect, useRef, useState } from "react";
 import { ALLOWED, MAX_MB, predict } from "../api.js";
 import AudioReview from "./AudioReview.jsx";
 import Recorder from "./Recorder.jsx";
-import { ALL_LANGUAGES, NATIVE, SAMPLES } from "../samples.js";
-import { Alert, Check, Cross, Download, Globe, Mic, Person, Redo, Robot, Sparkle, Upload } from "./icons.jsx";
+import { NATIVE, SAMPLES } from "../samples.js";
+import { Gauge, SegmentStrip } from "./charts.jsx";
+import { Alert, Check, Cpu, Cross, Download, Globe, Mic, Person, Redo, Robot, Sparkle, Upload } from "./icons.jsx";
 
 /** What we actually measured for this language, in one plain sentence. */
 function languageNote(lang, report) {
   if (!lang) return null;
   const L = report?.languages?.[lang];
-  if (!L) {
-    const why = report?.dataset?.excluded_languages?.[lang];
-    return { tone: "warn", text: `${lang} has not been evaluated yet${why ? " (training data incomplete)" : ""}, so this result is unverified for ${lang} speech.` };
-  }
+  if (!L) return null;
   const t = L.test;
   const acc = Math.round(t.accuracy * 100);
   const n = t.bonafide_total + t.spoof_total;
   const tone = L.status === "supported" ? "good" : "warn";
   const caveat = L.shortcut_probe?.shortcut_risk ? " Caution: real and AI test clips for this language also differ in recording conditions, so this score may be optimistic." : "";
-  return { tone: caveat ? "warn" : tone, text: `For ${lang}, the model classified ${acc}% of ${n} unseen test clips correctly (EER ${(t.eer * 100).toFixed(1)}%). Status: ${L.status}.${caveat}` };
+  const why = L.status_reason ? ` ${L.status_reason}` : L.status === "experimental" && t.speakers < 10 ? ` Only ${t.speakers} test speakers so far, so treat results as indicative.` : "";
+  return { tone: caveat ? "warn" : tone, text: `For ${lang}, ${acc}% of ${n} unseen test clips were classified correctly (EER ${(t.eer * 100).toFixed(1)}%). Status: ${L.status}.${why}${caveat}` };
+}
+
+/** Language choice: decides which model answers and which measured results apply. */
+function LanguagePicker({ languages, lang, setLang, report, disabled }) {
+  const status = (l) => report?.languages?.[l]?.status;
+  const move = (e, i) => {
+    const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const next = languages[(i + d + languages.length) % languages.length];
+    setLang(next);
+    e.currentTarget.parentElement.querySelector(`[data-lang="${next}"]`)?.focus();
+  };
+  return (
+    <div className="lang-picker">
+      <div className="step-label"><span className="step-num">1</span><span id="lang-label">Language spoken in the audio</span></div>
+      <div className="lang-pills" role="radiogroup" aria-labelledby="lang-label">
+        {languages.map((l, i) => {
+          const st = status(l);
+          return (
+            <button key={l} type="button" role="radio" aria-checked={lang === l} data-lang={l} disabled={disabled}
+                    tabIndex={lang === l ? 0 : -1} className={`lang-pill ${lang === l ? "on" : ""}`}
+                    onClick={() => setLang(l)} onKeyDown={(e) => move(e, i)}>
+              <span className="lang-pill-name">{l}</span>
+              <span className="lang-pill-native">{NATIVE[l] !== l ? NATIVE[l] : " "}</span>
+              {st && <span className={`lang-dot st-${st.replace(" ", "-")}`} title={st} aria-label={st} />}
+            </button>
+          );
+        })}
+      </div>
+      <p className="lang-legend"><span><i className="lang-dot st-supported" /> Supported</span><span><i className="lang-dot st-experimental" /> Experimental (limited test data)</span></p>
+    </div>
+  );
 }
 
 const TABS = [
@@ -34,7 +66,7 @@ const pc = (x) => (x >= 0.995 ? ">99%" : `${Math.round(x * 100)}%`);
 function confidenceWord(c) {
   if (c >= 0.9) return "High confidence";
   if (c >= 0.7) return "Moderate confidence";
-  return "Low confidence, treat with caution";
+  return "Low confidence: treat with caution";
 }
 
 function Checking() {
@@ -52,10 +84,9 @@ function Result({ result, source, onAgain, lang, report }) {
   const ai = result.label === "spoof";
   const langInfo = languageNote(lang, report);
   const correct = source.sample ? source.sample.truth === result.label : null;
-  const dots = Math.min(10, Math.max(1, Math.round(result.confidence * 10)));
 
   function downloadReport() {
-    const report = { tool: "FakeAudio Shield", checked_at: new Date().toISOString(), input: source.file.name,
+    const report = { tool: "FakeAudio Shield", checked_at: new Date().toISOString(), input: source.file.name, language: lang,
       source: source.kind, reference: source.sample ? source.sample.truth : null, result };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
     Object.assign(document.createElement("a"), { href: url, download: `voice-check-${source.file.name.replace(/\.[^.]+$/, "")}.json` }).click();
@@ -73,12 +104,18 @@ function Result({ result, source, onAgain, lang, report }) {
         </div>
       </div>
 
-      <div className="confidence">
-        <div className="dots" aria-hidden="true">
-          {Array.from({ length: 10 }, (_, i) => <span key={i} className={i < dots ? "on" : ""} />)}
+      <div className="result-viz">
+        <Gauge value={result.probabilities.spoof} />
+        <div className="result-side">
+          <div className="confidence">
+            <span className="confidence-label">Confidence</span>
+            <strong>{pc(result.confidence)}</strong>
+            <span className={`confidence-word c-${result.confidence >= 0.9 ? "high" : result.confidence >= 0.7 ? "mid" : "low"}`}>{confidenceWord(result.confidence)}</span>
+          </div>
+          <p className="model-badge"><Cpu size={14} /> {result.model ?? "Model"} · {lang}</p>
         </div>
-        <div className="confidence-text"><strong>{pc(result.confidence)}</strong> {confidenceWord(result.confidence)}</div>
       </div>
+      <SegmentStrip segments={result.segments} />
 
       {correct !== null && (
         <p className={`note ${correct ? "good" : "bad"}`}>
@@ -90,7 +127,7 @@ function Result({ result, source, onAgain, lang, report }) {
         </p>
       )}
       {source.kind === "recording" && (
-        <p className="note info"><Alert size={16} /> <span>Live microphone recordings are less reliable: the model learned from studio-quality audio, so room noise and laptop mics can affect the result.</span></p>
+        <p className="note info"><Alert size={16} /> <span>Live microphone recordings are less reliable: room echo, background noise and laptop microphones differ from the training audio and can affect the result.</span></p>
       )}
       {langInfo && (
         <p className={`note ${langInfo.tone === "good" ? "good" : "info"}`}><Globe size={16} /> <span>{langInfo.text}</span></p>
@@ -105,7 +142,7 @@ function Result({ result, source, onAgain, lang, report }) {
           <div><dt>Speech analysed</dt><dd>{result.audio.analysed_duration_sec} s (silence removed, 16 kHz)</dd></div>
           <div><dt>4-second parts</dt><dd>{result.segments.map((s) => `${(s.spoof_probability * 100).toFixed(0)}% AI`).join(" · ")}</dd></div>
           <div><dt>Time taken</dt><dd>{(result.processing_time_ms / 1000).toFixed(2)} s</dd></div>
-          <div><dt>Model</dt><dd>Wav2Vec2 + MFCC/log-mel features → LCNN</dd></div>
+          <div><dt>Model</dt><dd>{result.model ?? "LCNN"}: Wav2Vec2 + MFCC/log-mel features → LCNN</dd></div>
         </dl>
       </details>
 
@@ -118,7 +155,7 @@ function Result({ result, source, onAgain, lang, report }) {
   );
 }
 
-export default function Checker({ ready, onHistory, report, lang, setLang }) {
+export default function Checker({ ready, onHistory, report, languages, lang, setLang }) {
   const [tab, setTab] = useState("samples");
   const sampleLang = SAMPLES[lang] ? lang : "English";
   const [source, setSource] = useState(null);     // { file, kind, sample? }
@@ -148,7 +185,7 @@ export default function Checker({ ready, onHistory, report, lang, setLang }) {
     setPhase("checking");
     setError(null);
     try {
-      const r = await predict(source.file);
+      const r = await predict(source.file, lang);
       setResult(r);
       setPhase("result");
       onHistory({ name: source.sample?.name ?? source.file.name, kind: source.kind, label: r.label,
@@ -165,17 +202,10 @@ export default function Checker({ ready, onHistory, report, lang, setLang }) {
 
   return (
     <div className="checker" id="check">
-      <div className="lang-bar">
-        <label htmlFor="lang-select"><Globe size={16} /> Language of the audio</label>
-        <select id="lang-select" value={lang} onChange={(e) => setLang(e.target.value)} disabled={phase === "checking"}>
-          {ALL_LANGUAGES.map((l) => {
-            const st = report?.languages?.[l]?.status;
-            return <option key={l} value={l}>{l}{NATIVE[l] !== l ? ` · ${NATIVE[l]}` : ""}{st ? ` (${st})` : " (not evaluated)"}</option>;
-          })}
-        </select>
-      </div>
+      <LanguagePicker languages={languages} lang={lang} setLang={setLang} report={report} disabled={phase === "checking"} />
       {phase === "pick" && (
         <>
+          <div className="step-label pad"><span className="step-num">2</span>Add a voice clip</div>
           <div className="tabs" role="tablist" aria-label="Choose how to add audio">
             {TABS.map(({ id, label: l, icon: Ico }) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id}
@@ -207,9 +237,6 @@ export default function Checker({ ready, onHistory, report, lang, setLang }) {
 
             {tab === "samples" && (
               <ul className="sample-list">
-                {!SAMPLES[lang] && (
-                  <li className="sample-credit">No {lang} samples yet. Showing {sampleLang} clips instead.</li>
-                )}
                 {SAMPLES[sampleLang].map((s) => (
                   <li key={s.file}>
                     <button type="button" onClick={() => pickSample(s)}>

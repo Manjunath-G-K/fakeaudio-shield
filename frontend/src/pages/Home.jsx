@@ -3,65 +3,75 @@ import { CountUp, ScoreRing, pct } from "../components/charts.jsx";
 import { Arrow, Brain, Check, Cpu, Lock, Mic, Wave } from "../components/icons.jsx";
 import { GoodToKnow, Recent } from "../components/Info.jsx";
 import { useReveal } from "../hooks.js";
-import { ALL_LANGUAGES, NATIVE } from "../samples.js";
+import { NATIVE } from "../samples.js";
 
 const STATUS_TEXT = { supported: "Supported", experimental: "Experimental", "not supported": "Not supported" };
+const toCheck = () => document.getElementById("check")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-function Hero({ health, report, lang, setLang, onHistory }) {
+function Hero({ health, report, languages, lang, setLang, onHistory }) {
   const t = report?.overall;
-  const langs = Object.keys(report?.languages ?? {});
   return (
     <section className="hero">
-      <div className="hero-copy">
-        <p className="eyebrow">Deepfake voice detection</p>
-        <h1>Is this voice <span className="hl-real">real</span>, or <span className="hl-ai">AI</span>?</h1>
-        <p className="lead">
-          Record yourself, upload a clip or try a sample. FakeAudio Shield listens for the tiny
-          artefacts that voice-cloning tools leave behind, and tells you in about a second.
-        </p>
-        <div className="hero-cta">
-          <a href="#/results" className="btn primary">See measured results <Arrow size={18} /></a>
-          <a href="#how" className="btn ghost">How it works</a>
+      <div className="hero-bg" aria-hidden="true" />
+      <div className="hero-inner">
+        <div className="hero-copy">
+          <p className="badge"><span className="badge-dot" />Wav2Vec2 + LCNN · {languages.length} languages evaluated</p>
+          <h1>Is this voice <span className="hl-real">real</span>, or <span className="hl-ai">AI</span>?</h1>
+          <p className="lead">
+            Record yourself, upload a clip or try a sample. FakeAudio Shield listens for the subtle
+            artefacts that voice-cloning tools leave behind, and gives you an answer in seconds.
+          </p>
+          <div className="hero-cta">
+            <button type="button" className="btn primary" onClick={toCheck}>Check a voice <Arrow size={18} /></button>
+            <a href="#/results" className="btn secondary">See measured results</a>
+          </div>
+          <dl className="hero-facts">
+            <div><dt>{t?.accuracy != null ? <CountUp value={t.accuracy} format={(v) => pct(v, 1)} /> : "–"}</dt><dd>accuracy on unseen test voices</dd></div>
+            <div><dt>{t?.eer != null ? <CountUp value={t.eer} format={(v) => pct(v, 1)} /> : "–"}</dt><dd>equal error rate, all languages</dd></div>
+            <div><dt>CPU</dt><dd>no GPU needed to run it</dd></div>
+          </dl>
         </div>
-        <dl className="hero-facts">
-          <div><dt><CountUp value={langs.length || null} /></dt><dd>{langs.length === 1 ? "language" : "languages"} evaluated</dd></div>
-          <div><dt>{t?.eer != null ? <CountUp value={t.eer} format={(v) => pct(v, 1)} /> : "–"}</dt><dd>error rate on unseen voices</dd></div>
-          <div><dt>~1 s</dt><dd>per check, on a laptop CPU</dd></div>
-        </dl>
-      </div>
-      <div className="hero-tool">
-        <Checker ready={!!health?.model_loaded} onHistory={onHistory} report={report} lang={lang} setLang={setLang} />
+        <div className="hero-tool">
+          <Checker ready={!!health?.model_loaded} onHistory={onHistory} report={report}
+                   languages={languages} lang={lang} setLang={setLang} />
+        </div>
       </div>
     </section>
   );
 }
 
-function Languages({ report, setLang }) {
+function Languages({ report, languages, setLang }) {
   const ref = useReveal();
-  const excluded = report?.dataset?.excluded_languages ?? {};
+  const models = report?.models ?? {};
   return (
     <section className="section reveal" id="languages" ref={ref}>
       <div className="section-head">
-        <h2>Language coverage</h2>
-        <p>Every number comes from an evaluation on speakers the model never heard. Languages without measured results are shown as in progress, not claimed.</p>
+        <p className="kicker">Language coverage</p>
+        <h2>Six languages, each measured separately</h2>
+        <p>Every number comes from a test on speakers the model never heard. "Supported" needs an
+          error rate below 10% (upper 95% bound) and at least 10 different test speakers.</p>
       </div>
       <div className="lang-grid">
-        {ALL_LANGUAGES.map((l) => {
+        {languages.map((l) => {
           const L = report?.languages?.[l];
-          const status = L ? L.status : "in progress";
+          const status = L?.status ?? "experimental";
           return (
-            <button key={l} type="button" className={`lang-card st-${status.replace(" ", "-")}`}
-                    onClick={() => { setLang(l); document.getElementById("check")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+            <button key={l} type="button" className="lang-card"
+                    onClick={() => { setLang(l); toCheck(); }} aria-label={`Check a ${l} voice`}>
               <div className="lang-top">
-                <span className="lang-name"><strong>{l}</strong>{NATIVE[l] !== l && <small>{NATIVE[l]}</small>}</span>
-                <ScoreRing value={L?.test?.accuracy ?? null} size={58} label={`${l} test accuracy`}
-                           tone={status === "supported" ? "good" : status === "experimental" ? "warn" : "muted"} />
+                <span className="lang-name"><strong>{l}</strong><small>{NATIVE[l] !== l ? NATIVE[l] : " "}</small></span>
+                <ScoreRing value={L?.test?.accuracy ?? null} size={60} label={`${l} test accuracy`}
+                           tone={status === "supported" ? "good" : "warn"} />
               </div>
-              <span className={`chip st-${status.replace(" ", "-")}`}>{STATUS_TEXT[status] ?? "In progress"}</span>
-              <span className="lang-meta">
-                {L ? `${L.test.bonafide_total + L.test.spoof_total} test clips · EER ${pct(L.test.eer)}`
-                  : excluded[l] ? "Waiting for real-speech data" : "Not collected yet"}
-              </span>
+              <span className={`chip st-${status.replace(" ", "-")}`}>{STATUS_TEXT[status]}</span>
+              {L ? (
+                <dl className="lang-stats">
+                  <div><dt>EER</dt><dd>{pct(L.test.eer)}</dd></div>
+                  <div><dt>Test clips</dt><dd>{L.test.bonafide_total + L.test.spoof_total}</dd></div>
+                  <div><dt>Speakers</dt><dd>{L.test.speakers}</dd></div>
+                </dl>
+              ) : <span className="lang-meta">Loading results…</span>}
+              {L?.model && models[L.model] && <span className="lang-meta">Model: {models[L.model].name}</span>}
             </button>
           );
         })}
@@ -73,27 +83,27 @@ function Languages({ report, setLang }) {
 function Pipeline() {
   const ref = useReveal();
   const steps = [
-    { icon: Mic, title: "Your audio", text: "Any WAV, FLAC, MP3, OGG or M4A, or a recording from your mic.", tech: "≤ 20 MB · first 60 s" },
+    { icon: Mic, title: "Your audio", text: "WAV, FLAC, MP3, OGG or M4A, or a recording straight from your microphone.", tech: "≤ 20 MB · first 60 s" },
     { icon: Wave, title: "Clean up", text: "Resampled, silence trimmed, volume evened out, cut into 4-second parts.", tech: "16 kHz mono" },
-    { icon: Brain, title: "Listen", text: "A speech model trained on 960 h of real voices, plus classic spectral features.", tech: "Wav2Vec2 + MFCC/log-mel" },
-    { icon: Check, title: "Decide", text: "A compact neural network scores each part; scores are averaged into one answer.", tech: "LCNN · threshold 0.5" },
+    { icon: Brain, title: "Listen", text: "A speech model pre-trained on 960 hours of real voices, plus classic spectral features.", tech: "Wav2Vec2 + MFCC/log-mel" },
+    { icon: Check, title: "Decide", text: "A compact neural network scores each part; the scores are combined into one answer.", tech: "LCNN · calibrated on dev" },
   ];
   return (
     <section className="section reveal" id="how" ref={ref}>
       <div className="section-head">
-        <h2>How it works</h2>
-        <p>Four steps, about one second on a normal laptop. Nothing leaves your computer.</p>
+        <p className="kicker">How it works</p>
+        <h2>From sound wave to verdict in four steps</h2>
+        <p>Light enough to run on an ordinary laptop CPU.</p>
       </div>
       <ol className="pipeline">
         {steps.map(({ icon: Ico, title, text, tech }, i) => (
           <li key={title} style={{ "--i": i }}>
-            <span className="pipe-node"><Ico size={22} /></span>
+            <div className="pipe-top"><span className="pipe-node"><Ico size={22} /></span><span className="pipe-num">0{i + 1}</span></div>
             <h3>{title}</h3>
             <p>{text}</p>
             <code>{tech}</code>
           </li>
         ))}
-        <span className="pipe-line" aria-hidden="true"><i /></span>
       </ol>
     </section>
   );
@@ -102,36 +112,37 @@ function Pipeline() {
 function ResultsTeaser({ report }) {
   const ref = useReveal();
   const t = report?.overall;
-  const model = report?.model;
   if (!t) return null;
   return (
     <section className="section reveal" ref={ref}>
       <div className="teaser">
         <div>
+          <p className="kicker">Transparency</p>
           <h2>Measured, not promised</h2>
-          <p>Tested on {(t.bonafide_total + t.spoof_total).toLocaleString("en-IN")} clips the model never heard, with 95% confidence intervals, per-language breakdowns and the full dataset audit.</p>
+          <p>Tested on {(t.bonafide_total + t.spoof_total).toLocaleString("en-IN")} clips the model never heard, with
+            95% confidence intervals, per-language breakdowns, a recording-condition check and the full dataset audit.</p>
           <a href="#/results" className="btn primary">Open the results <Arrow size={18} /></a>
         </div>
         <dl className="teaser-stats">
           <div><dt><CountUp value={t.bonafide_correct / t.bonafide_total} format={(v) => pct(v, 1)} /></dt><dd>of real voices recognised as real</dd></div>
           <div><dt><CountUp value={t.spoof_correct / t.spoof_total} format={(v) => pct(v, 1)} /></dt><dd>of unseen AI voices caught</dd></div>
-          <div><dt><CountUp value={model?.trainable_parameters} format={(v) => Math.round(v).toLocaleString("en-US")} /></dt><dd>trainable parameters (runs on a CPU)</dd></div>
+          <div><dt><CountUp value={t.macro_eer} format={(v) => pct(v, 1)} /></dt><dd>mean equal error rate across languages</dd></div>
         </dl>
       </div>
     </section>
   );
 }
 
-export default function Home({ health, report, lang, setLang, history, onHistory }) {
+export default function Home({ health, report, languages, lang, setLang, history, onHistory }) {
   return (
     <>
-      <Hero health={health} report={report} lang={lang} setLang={setLang} onHistory={onHistory} />
+      <Hero health={health} report={report} languages={languages} lang={lang} setLang={setLang} onHistory={onHistory} />
       <div className="recent-wrap"><Recent items={history} /></div>
-      <Languages report={report} setLang={setLang} />
+      <Languages report={report} languages={languages} setLang={setLang} />
       <Pipeline />
       <ResultsTeaser report={report} />
       <GoodToKnow report={report} />
-      <p className="privacy"><Lock size={16} /> Runs locally: audio is analysed on this machine and deleted right after. <Cpu size={16} /> No GPU needed.</p>
+      <p className="privacy"><Lock size={16} /> Audio is analysed by the server you are connected to and deleted right after. Nothing is stored. <Cpu size={16} /> No GPU needed.</p>
     </>
   );
 }

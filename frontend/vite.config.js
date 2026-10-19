@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 // /api requests from the React app are forwarded to the FastAPI backend on port 8000.
 export default defineConfig({
   plugins: [react()],
+  envDir: "..",   // VITE_* settings come from the repository-root .env (see .env.example)
   server: {
     port: 5173,
     proxy: {

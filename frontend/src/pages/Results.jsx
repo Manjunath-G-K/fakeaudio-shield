@@ -3,7 +3,6 @@ import { getDataSizeStudy } from "../api.js";
 import { CountUp, EerChart, LearningCurve, StackBar, TrainingCurve, pct } from "../components/charts.jsx";
 import { Alert, Arrow, Chart, Cpu, Database, Globe, Redo } from "../components/icons.jsx";
 import { useReveal } from "../hooks.js";
-import { ALL_LANGUAGES } from "../samples.js";
 
 const ci = (c, d = 1) => (c ? `${(c[0] * 100).toFixed(d)}–${(c[1] * 100).toFixed(d)}%` : "–");
 const rate = (k, n) => (n ? k / n : null);
@@ -134,10 +133,15 @@ export default function Results({ report, reload }) {
   const ds = report.dataset;
   const tr = report.training;
   const testClips = o.bonafide_total + o.spoof_total;
+  const models = report.models ?? { multilingual: { name: "Model", ...report.model, training: tr } };
   const usedSources = new Set(Object.values(ds?.languages ?? {}).flatMap((d) => d.sources));
   const needWork = [
-    ...names.filter((n) => langs[n].status !== "supported").map((n) => ({ lang: n, why: `${STATUS[langs[n].status]}: test EER ${pct(langs[n].test.eer)} (95% CI ${ci(langs[n].test.eer_ci)}).${langs[n].status_reason ? " " + langs[n].status_reason : ""}` })),
-    ...ALL_LANGUAGES.filter((l) => !langs[l]).map((l) => ({ lang: l, why: ds?.excluded_languages?.[l] ? `Not trained: ${ds.excluded_languages[l]}.` : "Not collected yet." })),
+    ...names.filter((n) => langs[n].status !== "supported").map((n) => {
+      const t = langs[n].test;
+      const few = t.speakers < 10 ? ` Only ${t.speakers} test speakers (10 needed).` : "";
+      const wide = t.eer_ci && t.eer_ci[1] > 0.1 ? ` Upper 95% bound ${pct(t.eer_ci[1])} is above 10%.` : "";
+      return { lang: n, why: `${STATUS[langs[n].status]}: test EER ${pct(t.eer)} (95% CI ${ci(t.eer_ci)}).${few}${wide}${langs[n].status_reason ? " " + langs[n].status_reason : ""}` };
+    }),
   ];
 
   return (
@@ -163,7 +167,7 @@ export default function Results({ report, reload }) {
         <div className="table-wrap">
           <table className="r-table">
             <thead>
-              <tr><th>Language</th><th>Status</th><th>EER (95% CI)</th><th>Accuracy (95% CI)</th><th>Real passed</th><th>AI caught</th><th>Test clips</th><th>Speakers</th><th title="EER of a simple classifier that only sees recording conditions">Recording check</th></tr>
+              <tr><th>Language</th><th>Status</th><th>Model</th><th>EER (95% CI)</th><th>Accuracy (95% CI)</th><th>Real passed</th><th>AI caught</th><th>Test clips</th><th>Speakers</th><th title="EER of a simple classifier that only sees recording conditions">Recording check</th></tr>
             </thead>
             <tbody>
               {names.map((n) => {
@@ -172,6 +176,7 @@ export default function Results({ report, reload }) {
                   <tr key={n}>
                     <td><strong>{n}</strong></td>
                     <td><span className={`chip st-${langs[n].status.replace(" ", "-")}`}>{STATUS[langs[n].status]}</span></td>
+                    <td>{models[langs[n].model]?.name ?? "–"}</td>
                     <td>{pct(t.eer)} <small>({ci(t.eer_ci)})</small></td>
                     <td>{pct(t.accuracy)} <small>({ci(t.accuracy_ci)})</small></td>
                     <td>{t.bonafide_correct}/{t.bonafide_total}</td>
@@ -239,26 +244,34 @@ export default function Results({ report, reload }) {
         </Section>
       )}
 
-      <Section id="model" icon={Cpu} title="Model and training" sub="A frozen pretrained speech model plus a small trainable classifier: light enough to train and run on a laptop CPU.">
-        <div className="two-col">
-          <ul className="kv">
-            <li><span>Speech model</span><b>{report.model.frontend}</b></li>
-            <li><span>Spectral features</span><b>{report.model.spectral_features}</b></li>
-            <li><span>Classifier</span><b>{report.model.classifier}</b></li>
-            <li><span>Trainable parameters</span><b>{report.model.trainable_parameters.toLocaleString("en-US")}</b></li>
-            <li><span>Input</span><b>{report.model.segment_seconds} s segments, averaged</b></li>
-            <li><span>Decision threshold</span><b>P(AI) ≥ {report.model.threshold}</b></li>
-          </ul>
-          <div>
-            <ul className="kv">
-              <li><span>Epochs run (best)</span><b>{tr.epochs_run ?? "–"} ({tr.best_epoch})</b></li>
-              <li><span>Training time</span><b>{tr.seconds ? `${Math.round(tr.seconds / 60)} min on ${tr.device}` : "–"}</b></li>
-              <li><span>Optimiser</span><b>{tr.optimizer ?? "–"}, lr {tr.learning_rate ?? "–"}</b></li>
-              <li><span>Balancing</span><b>{tr.balancing ?? "–"}</b></li>
-              <li><span>Model selection</span><b>{tr.model_selection ?? "–"}</b></li>
-            </ul>
-            {tr.history && <><h3 className="curve-title">Dev EER after each epoch</h3><TrainingCurve history={tr.history} best={tr.best_epoch} /></>}
-          </div>
+      <Section id="model" icon={Cpu} title="Models and training" sub="A frozen pretrained speech model plus small trainable classifiers: light enough to train and run on a laptop CPU.">
+        <ul className="kv">
+          <li><span>Speech model</span><b>{report.model.frontend}</b></li>
+          <li><span>Spectral features</span><b>{report.model.spectral_features}</b></li>
+          <li><span>Classifier</span><b>{report.model.classifier}</b></li>
+          <li><span>Input</span><b>{report.model.segment_seconds} s segments, combined by length</b></li>
+        </ul>
+        {report.model.routing && <p className="condition">{report.model.routing}</p>}
+        <div className="model-cards">
+          {Object.entries(models).map(([key, m]) => {
+            const t = m.training ?? {};
+            return (
+              <div className="model-card" key={key}>
+                <h3>{m.name}</h3>
+                <p className="condition">Trained on {(m.languages ?? names).join(", ")}{m.checkpoint ? <> · <code>{m.checkpoint}</code></> : null}</p>
+                <ul className="kv">
+                  <li><span>Trainable parameters</span><b>{m.trainable_parameters?.toLocaleString("en-US") ?? "–"}</b></li>
+                  <li><span>Architecture</span><b>{m.arch ? `${m.arch.proj_dim}-d projection, time pooling ×${m.arch.time_pool}` : "–"}</b></li>
+                  <li><span>Epochs run (best)</span><b>{t.epochs_run ?? "–"} ({t.best_epoch ?? "–"})</b></li>
+                  <li><span>Training time</span><b>{t.seconds ? `${Math.round(t.seconds / 60)} min on ${t.device ?? "CPU"}` : "–"}</b></li>
+                  <li><span>Balancing</span><b>{t.balancing ?? "–"}</b></li>
+                  <li><span>Model selection</span><b>{t.model_selection ?? "–"}</b></li>
+                  <li><span>Decision threshold (raw)</span><b>{m.raw_threshold ?? "–"}</b></li>
+                </ul>
+                {t.history?.length > 1 && <><h3 className="curve-title">Dev EER after each epoch</h3><TrainingCurve history={t.history} best={t.best_epoch} /></>}
+              </div>
+            );
+          })}
         </div>
       </Section>
 

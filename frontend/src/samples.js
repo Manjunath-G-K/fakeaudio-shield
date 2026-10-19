@@ -14,6 +14,6 @@ export const SAMPLES = {
   ],
 };
 
-export const ALL_LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "Marathi", "Bengali"];
-export const NATIVE = { English: "English", Hindi: "हिन्दी", Kannada: "ಕನ್ನಡ", Tamil: "தமிழ்", Telugu: "తెలుగు",
-  Malayalam: "മലയാളം", Marathi: "मराठी", Bengali: "বাংলা" };
+// Languages with measured results (the backend's /api/health is the source of truth; this is the fallback).
+export const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam"];
+export const NATIVE = { English: "English", Hindi: "हिन्दी", Kannada: "ಕನ್ನಡ", Tamil: "தமிழ்", Telugu: "తెలుగు", Malayalam: "മലയാളം" };

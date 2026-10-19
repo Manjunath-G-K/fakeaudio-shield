@@ -1,6 +1,8 @@
 import { useCountUp } from "../hooks.js";
 
 const pct = (x, d = 1) => (x == null ? "–" : `${(x * 100).toFixed(d)}%`);
+// a model score is an estimate, never certainty: show ">99" / "<1" instead of 100 / 0
+const prob = (x) => (x >= 0.995 ? ">99" : x < 0.005 ? "<1" : `${Math.round(x * 100)}`);
 
 /** Animated count-up number, e.g. <CountUp value={0.0825} format={(v) => pct(v, 2)} /> */
 export function CountUp({ value, format = (v) => Math.round(v).toLocaleString("en-IN") }) {
@@ -117,6 +119,56 @@ export function StackBar({ parts }) {
   return (
     <div className="stack" role="img" aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}>
       {parts.map((p) => <span key={p.label} className={`stack-${p.key}`} style={{ width: `${(p.value / total) * 100}%` }} title={`${p.label}: ${p.value}`} />)}
+    </div>
+  );
+}
+
+/** Half-circle gauge for P(AI), 0..1, with the decision line at 50%. */
+export function Gauge({ value }) {
+  const [v, ref] = useCountUp(value, 900);
+  const r = 80, cx = 100, cy = 96, len = Math.PI * r;
+  const at = (p) => [cx - r * Math.cos(Math.PI * p), cy - r * Math.sin(Math.PI * p)];
+  const [nx, ny] = at(v);
+  const arc = `M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`;
+  return (
+    <div className="gauge" ref={ref} role="img" aria-label={`Chance the voice is AI-generated: ${prob(value)}%`}>
+      <svg viewBox="0 0 200 112" aria-hidden="true">
+        <defs>
+          <linearGradient id="gauge-grad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="var(--real)" /><stop offset="50%" stopColor="var(--warn-line)" /><stop offset="100%" stopColor="var(--ai)" />
+          </linearGradient>
+        </defs>
+        <path d={arc} className="gauge-track" />
+        <path d={arc} className="gauge-fill" strokeDasharray={len} strokeDashoffset={len * (1 - v)} />
+        <line x1={cx} y1={cy - r - 9} x2={cx} y2={cy - r + 9} className="gauge-mid" />
+        <circle cx={nx} cy={ny} r="7.5" className="gauge-knob" />
+      </svg>
+      <div className="gauge-value"><b>{v === value ? prob(value) : Math.round(v * 100)}<small>%</small></b><span>chance of AI</span></div>
+      <div className="gauge-ends" aria-hidden="true"><span>Real</span><span>AI</span></div>
+    </div>
+  );
+}
+
+/** One block per analysed 4-second part, coloured by its P(AI). */
+export function SegmentStrip({ segments }) {
+  if (!segments?.length) return null;
+  const total = segments[segments.length - 1].end || 1;
+  return (
+    <div className="segs">
+      <div className="segs-head"><span>Timeline</span><span>{segments.length} part{segments.length > 1 ? "s" : ""} · {total.toFixed(1)} s of speech</span></div>
+      <div className="segs-bar" role="list">
+        {segments.map((s) => {
+          const p = s.spoof_probability;
+          return (
+            <span key={s.start} role="listitem" className={p >= 0.5 ? "ai" : "real"}
+                  style={{ flexGrow: Math.max(0.5, s.end - s.start), "--p": p }}
+                  title={`${s.start.toFixed(1)}–${s.end.toFixed(1)} s: ${prob(p)}% AI`}
+                  aria-label={`${s.start.toFixed(1)} to ${s.end.toFixed(1)} seconds: ${prob(p)}% AI`}>
+              <i>{prob(p)}%</i>
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
