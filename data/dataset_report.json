@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-10-19T12:36:09",
+  "records_found": 5600,
+  "records_kept": 4074,
+  "removed": {
+    "duration outside 1.0-60.0 s": 13,
+    "language not usable yet (missing real or AI clips)": 1500,
+    "class balancing (down-sampled)": 13
+  },
+  "removed_examples": {
+    "duration outside 1.0-60.0 s": [
+      "LA/ASVspoof2019_LA_train/flac/LA_T_7865048.flac",
+      "LA/ASVspoof2019_LA_train/flac/LA_T_7754596.flac",
+      "LA/ASVspoof2019_LA_train/flac/LA_T_6188162.flac",
+      "LA/ASVspoof2019_LA_dev/flac/LA_D_6735934.flac",
+      "LA/ASVspoof2019_LA_eval/flac/LA_E_1673131.flac"
+    ],
+    "language not usable yet (missing real or AI clips)": [
+      "indic/Hindi/fake/train_34657.wav",
+      "indic/Hindi/fake/train_97358.wav",
+      "indic/Hindi/fake/train_29920.wav",
+      "indic/Hindi/fake/train_118914.wav",
+      "indic/Hindi/fake/train_182443.wav"
+    ],
+    "class balancing (down-sampled)": [
+      "LA/ASVspoof2019_LA_train/flac/LA_T_2547007.flac",
+      "LA/ASVspoof2019_LA_train/flac/LA_T_6954528.flac",
+      "LA/ASVspoof2019_LA_train/flac/LA_T_6345056.flac",
+      "LA/ASVspoof2019_LA_dev/flac/LA_D_3631905.flac",
+      "LA/ASVspoof2019_LA_eval/flac/LA_E_2431503.flac"
+    ]
+  },
+  "languages": {
+    "English": {
+      "train": {
+        "bonafide": 1247,
+        "spoof": 1247,
+        "speakers": 20
+      },
+      "dev": {
+        "bonafide": 399,
+        "spoof": 399,
+        "speakers": 20
+      },
+      "test": {
+        "bonafide": 391,
+        "spoof": 391,
+        "speakers": 67
+      },
+      "sources": [
+        "ASVspoof 2019 LA"
+      ],
+      "hours": 3.85
+    }
+  },
+  "excluded_languages": {
+    "Hindi": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+    "Kannada": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+    "Malayalam": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+    "Tamil": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+    "Telugu": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready"
+  },
+  "sources": {
+    "ASVspoof 2019 LA": {
+      "license": "ODC-By 1.0",
+      "url": "https://datashare.ed.ac.uk/handle/10283/3336"
+    },
+    "Kathbath": {
+      "license": "CC BY 4.0",
+      "url": "https://huggingface.co/datasets/ai4bharat/Kathbath"
+    },
+    "IndicSynth": {
+      "license": "CC BY-NC 4.0",
+      "url": "https://huggingface.co/datasets/vdivyasharma/IndicSynth"
+    }
+  },
+  "largest_source_records": 4100,
+  "notes": [
+    "No source has 1,000,000 or more records; nothing needed removing for size.",
+    "Audio is standardised at load time (16 kHz mono, silence trimmed, peak-normalised); transcripts are not used, so no text normalisation is applied.",
+    "Splits are speaker-disjoint (checked above). ASVspoof test = eval set with attacks A07-A19 unseen in training."
+  ]
+}

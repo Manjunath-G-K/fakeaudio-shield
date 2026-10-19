@@ -8,7 +8,9 @@ frontend/node_modules/
 frontend/dist/
 
 # Dataset and cached features (downloaded / generated locally)
-data/
+data/*
+!data/manifest.csv
+!data/dataset_report.json
 
 # Local editor / tool settings
 .claude/
