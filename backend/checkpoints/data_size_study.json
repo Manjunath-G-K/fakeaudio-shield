@@ -1,0 +1,36 @@
+{
+  "model": "fast LCNN (proj 64, time-pool 2), Wav2Vec2 frozen",
+  "epochs": 5,
+  "language": "English",
+  "note": "Same seed and test set for every size; the best epoch is picked on dev.",
+  "results": [
+    {
+      "fraction": 0.1,
+      "train_clips": 248,
+      "dev_eer": 0.3496,
+      "test_eer": 0.3862,
+      "seconds": 99
+    },
+    {
+      "fraction": 0.25,
+      "train_clips": 622,
+      "dev_eer": 0.104,
+      "test_eer": 0.1841,
+      "seconds": 166
+    },
+    {
+      "fraction": 0.5,
+      "train_clips": 1246,
+      "dev_eer": 0.0514,
+      "test_eer": 0.101,
+      "seconds": 289
+    },
+    {
+      "fraction": 1.0,
+      "train_clips": 2494,
+      "dev_eer": 0.0376,
+      "test_eer": 0.1023,
+      "seconds": 557
+    }
+  ]
+}

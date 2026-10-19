@@ -1,0 +1,372 @@
+{
+  "generated_at": "2026-10-19T12:32:03",
+  "model": {
+    "name": "Wav2Vec2 (wav2vec2-base, frozen) + LCNN",
+    "frontend": "facebook/wav2vec2-base, transformer layer 6, frozen (768 values / 20 ms)",
+    "spectral_features": "80 log-mel + 20 MFCC per 20 ms (Librosa)",
+    "classifier": "Light CNN with Max-Feature-Map, 2 classes",
+    "arch": {
+      "proj_dim": 128,
+      "time_pool": 1
+    },
+    "trainable_parameters": 330146,
+    "segment_seconds": 4.0,
+    "threshold": 0.5,
+    "raw_threshold": 0.0916,
+    "calibration": "Raw P(spoof) is re-mapped so the dev-set equal-error point (languages weighted equally) sits at 0.5."
+  },
+  "training": {
+    "epochs_run": 3,
+    "best_epoch": 3,
+    "max_epochs": 10,
+    "patience": 3,
+    "batch_size": 32,
+    "learning_rate": 0.0003,
+    "optimizer": "AdamW (weight decay 1e-4)",
+    "balancing": "class-weighted loss (English only)",
+    "model_selection": "lowest dev EER; run stopped after epoch 3 because each epoch took 9-20 min on this CPU",
+    "seconds": 2363,
+    "device": "CPU",
+    "history": [
+      {
+        "epoch": 1,
+        "dev_eer": 0.1938,
+        "dev_macro_eer": 0.1938
+      },
+      {
+        "epoch": 2,
+        "dev_eer": 0.0275,
+        "dev_macro_eer": 0.0275
+      },
+      {
+        "epoch": 3,
+        "dev_eer": 0.02,
+        "dev_macro_eer": 0.02
+      }
+    ],
+    "train_counts": {
+      "English": {
+        "bonafide": 1250,
+        "spoof": 1250
+      }
+    },
+    "note": "Trained 13 Oct 2026 with the 128-d / full-time-resolution LCNN; re-evaluated today on the cleaned manifest."
+  },
+  "metric_definitions": {
+    "eer": "Equal error rate: the operating point where the share of real voices flagged as fake equals the share of fakes passed as real. Lower is better; threshold-independent.",
+    "accuracy": "Share of test clips classified correctly at the calibrated threshold (chosen on dev, never on test). Test sets are class-balanced.",
+    "real_passed": "Share of real voices classified as real.",
+    "fake_caught": "Share of AI-generated voices classified as AI-generated.",
+    "ci": "95% intervals: bootstrap (500 resamples) for EER, Wilson score for proportions.",
+    "support_rule": "supported: upper 95% bound of test EER <= 10%; experimental: test EER <= 25%; otherwise not supported."
+  },
+  "overall": {
+    "eer": 0.07800511508951405,
+    "accuracy": 0.9053708439897699,
+    "macro_eer": 0.07800511508951405,
+    "macro_accuracy": 0.9053708439897699,
+    "bonafide_correct": 384,
+    "bonafide_total": 391,
+    "spoof_correct": 324,
+    "spoof_total": 391
+  },
+  "languages": {
+    "English": {
+      "status": "experimental",
+      "test": {
+        "eer": 0.07800511508951405,
+        "accuracy": 0.9053708439897699,
+        "bonafide_correct": 384,
+        "bonafide_total": 391,
+        "spoof_correct": 324,
+        "spoof_total": 391,
+        "eer_ci": [
+          0.0645,
+          0.1043
+        ],
+        "accuracy_ci": [
+          0.8828,
+          0.924
+        ],
+        "real_passed_ci": [
+          0.9635,
+          0.9913
+        ],
+        "fake_caught_ci": [
+          0.7881,
+          0.8628
+        ],
+        "speakers": 67,
+        "by_attack": {
+          "A07": {
+            "eer": null,
+            "accuracy": 0.7142857142857143,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 20,
+            "spoof_total": 28
+          },
+          "A08": {
+            "eer": null,
+            "accuracy": 0.9666666666666667,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 29,
+            "spoof_total": 30
+          },
+          "A09": {
+            "eer": null,
+            "accuracy": 0.9,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 27,
+            "spoof_total": 30
+          },
+          "A10": {
+            "eer": null,
+            "accuracy": 0.3225806451612903,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 10,
+            "spoof_total": 31
+          },
+          "A11": {
+            "eer": null,
+            "accuracy": 0.8275862068965517,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 24,
+            "spoof_total": 29
+          },
+          "A12": {
+            "eer": null,
+            "accuracy": 0.9032258064516129,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 28,
+            "spoof_total": 31
+          },
+          "A13": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 30,
+            "spoof_total": 30
+          },
+          "A14": {
+            "eer": null,
+            "accuracy": 0.8387096774193549,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 26,
+            "spoof_total": 31
+          },
+          "A15": {
+            "eer": null,
+            "accuracy": 0.8064516129032258,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 25,
+            "spoof_total": 31
+          },
+          "A16": {
+            "eer": null,
+            "accuracy": 0.8,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 24,
+            "spoof_total": 30
+          },
+          "A17": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 30,
+            "spoof_total": 30
+          },
+          "A18": {
+            "eer": null,
+            "accuracy": 0.9,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 27,
+            "spoof_total": 30
+          },
+          "A19": {
+            "eer": null,
+            "accuracy": 0.8,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 24,
+            "spoof_total": 30
+          }
+        }
+      },
+      "dev": {
+        "eer": 0.020050125313283207,
+        "accuracy": 0.9799498746867168,
+        "bonafide_correct": 391,
+        "bonafide_total": 399,
+        "spoof_correct": 391,
+        "spoof_total": 399,
+        "eer_ci": [
+          0.0125,
+          0.0338
+        ],
+        "accuracy_ci": [
+          0.9677,
+          0.9876
+        ],
+        "real_passed_ci": [
+          0.9609,
+          0.9898
+        ],
+        "fake_caught_ci": [
+          0.9609,
+          0.9898
+        ],
+        "speakers": 20,
+        "by_attack": {
+          "A01": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 66,
+            "spoof_total": 66
+          },
+          "A02": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 67,
+            "spoof_total": 67
+          },
+          "A03": {
+            "eer": null,
+            "accuracy": 0.9850746268656716,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 66,
+            "spoof_total": 67
+          },
+          "A04": {
+            "eer": null,
+            "accuracy": 0.9253731343283582,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 62,
+            "spoof_total": 67
+          },
+          "A05": {
+            "eer": null,
+            "accuracy": 1.0,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 66,
+            "spoof_total": 66
+          },
+          "A06": {
+            "eer": null,
+            "accuracy": 0.9696969696969697,
+            "bonafide_correct": 0,
+            "bonafide_total": 0,
+            "spoof_correct": 64,
+            "spoof_total": 66
+          }
+        }
+      },
+      "train": {
+        "bonafide": 1250,
+        "spoof": 1250
+      },
+      "test_condition": "ASVspoof 2019 LA evaluation set: unseen speakers and 13 voice-generation systems (A07-A19) never seen in training."
+    }
+  },
+  "dataset": {
+    "generated_at": "2026-10-19T12:36:09",
+    "records_found": 5600,
+    "records_kept": 4074,
+    "removed": {
+      "duration outside 1.0-60.0 s": 13,
+      "language not usable yet (missing real or AI clips)": 1500,
+      "class balancing (down-sampled)": 13
+    },
+    "removed_examples": {
+      "duration outside 1.0-60.0 s": [
+        "LA/ASVspoof2019_LA_train/flac/LA_T_7865048.flac",
+        "LA/ASVspoof2019_LA_train/flac/LA_T_7754596.flac",
+        "LA/ASVspoof2019_LA_train/flac/LA_T_6188162.flac",
+        "LA/ASVspoof2019_LA_dev/flac/LA_D_6735934.flac",
+        "LA/ASVspoof2019_LA_eval/flac/LA_E_1673131.flac"
+      ],
+      "language not usable yet (missing real or AI clips)": [
+        "indic/Hindi/fake/train_34657.wav",
+        "indic/Hindi/fake/train_97358.wav",
+        "indic/Hindi/fake/train_29920.wav",
+        "indic/Hindi/fake/train_118914.wav",
+        "indic/Hindi/fake/train_182443.wav"
+      ],
+      "class balancing (down-sampled)": [
+        "LA/ASVspoof2019_LA_train/flac/LA_T_2547007.flac",
+        "LA/ASVspoof2019_LA_train/flac/LA_T_6954528.flac",
+        "LA/ASVspoof2019_LA_train/flac/LA_T_6345056.flac",
+        "LA/ASVspoof2019_LA_dev/flac/LA_D_3631905.flac",
+        "LA/ASVspoof2019_LA_eval/flac/LA_E_2431503.flac"
+      ]
+    },
+    "languages": {
+      "English": {
+        "train": {
+          "bonafide": 1247,
+          "spoof": 1247,
+          "speakers": 20
+        },
+        "dev": {
+          "bonafide": 399,
+          "spoof": 399,
+          "speakers": 20
+        },
+        "test": {
+          "bonafide": 391,
+          "spoof": 391,
+          "speakers": 67
+        },
+        "sources": [
+          "ASVspoof 2019 LA"
+        ],
+        "hours": 3.85
+      }
+    },
+    "excluded_languages": {
+      "Hindi": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+      "Kannada": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+      "Malayalam": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+      "Tamil": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
+      "Telugu": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready"
+    },
+    "sources": {
+      "ASVspoof 2019 LA": {
+        "license": "ODC-By 1.0",
+        "url": "https://datashare.ed.ac.uk/handle/10283/3336"
+      },
+      "Kathbath": {
+        "license": "CC BY 4.0",
+        "url": "https://huggingface.co/datasets/ai4bharat/Kathbath"
+      },
+      "IndicSynth": {
+        "license": "CC BY-NC 4.0",
+        "url": "https://huggingface.co/datasets/vdivyasharma/IndicSynth"
+      }
+    },
+    "largest_source_records": 4100,
+    "notes": [
+      "No source has 1,000,000 or more records; nothing needed removing for size.",
+      "Audio is standardised at load time (16 kHz mono, silence trimmed, peak-normalised); transcripts are not used, so no text normalisation is applied.",
+      "Splits are speaker-disjoint (checked above). ASVspoof test = eval set with attacks A07-A19 unseen in training."
+    ]
+  }
+}
