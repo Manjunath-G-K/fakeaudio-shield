@@ -14,6 +14,7 @@ SAMPLE_RATE = 16_000          # Wav2Vec2 expects 16 kHz mono audio
 TRIM_TOP_DB = 35              # silence threshold for librosa.effects.trim
 SEGMENT_SECONDS = 4.0         # model input length; longer clips are split into 4 s windows
 MIN_SPEECH_SECONDS = 0.5      # clips shorter than this after trimming are rejected
+MIN_TAIL_SECONDS = 2.0        # a trailing partial segment shorter than this is dropped (if a full one exists)
 MAX_ANALYSED_SECONDS = 60.0   # only the first 60 s of a long upload is analysed
 SILENCE_PEAK = 1e-4           # peak amplitude below this counts as a silent file
 

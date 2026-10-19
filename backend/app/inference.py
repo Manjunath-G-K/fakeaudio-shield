@@ -117,8 +117,10 @@ class Detector:
             logits = self.lcnn(torch.from_numpy(w2v), torch.from_numpy(spec))
         probs = torch.softmax(logits, dim=1).numpy()          # (n_segments, 2)
 
-        # average raw P(spoof) over segments, then calibrate so the dev-chosen threshold sits at 0.5
-        p_spoof = float(calibrate(np.mean(probs[:, 1]), self.threshold))
+        # average raw P(spoof) over segments, weighted by how much real (unpadded) audio each
+        # holds, then calibrate so the dev-chosen threshold sits at 0.5
+        weights = np.array([b - a for a, b, _ in segs])
+        p_spoof = float(calibrate(np.average(probs[:, 1], weights=weights), self.threshold))
         seg_p = calibrate(probs[:, 1], self.threshold)
         label = "spoof" if p_spoof >= 0.5 else "bonafide"
         return {

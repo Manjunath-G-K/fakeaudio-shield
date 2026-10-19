@@ -51,8 +51,15 @@ def test_resample_normalise_and_segment():
     assert abs(len(clean) / config.SAMPLE_RATE - 9) < 0.05
     assert abs(np.max(np.abs(clean)) - 0.95) < 1e-3
     segs = segment(clean)
-    assert len(segs) == 3                                                 # 4 s + 4 s + 1 s
+    assert len(segs) == 2                                                 # 4 s + 4 s; the 1 s tail is dropped
     assert all(len(s) == int(config.SEGMENT_SECONDS * config.SAMPLE_RATE) for _, _, s in segs)
+
+
+def test_long_enough_tail_is_kept_and_short_clip_still_scored():
+    sr = config.SAMPLE_RATE
+    tone = lambda secs: (0.2 * np.sin(2 * np.pi * 300 * np.arange(int(secs * sr)) / sr)).astype(np.float32)
+    assert [round(b - a, 1) for a, b, _ in segment(tone(10.5))] == [4.0, 4.0, 2.5]   # 2.5 s tail kept
+    assert len(segment(tone(1.5))) == 1                                               # short clip: one window
 
 
 def test_corrupted_file_is_rejected(tmp_path):

@@ -88,15 +88,16 @@ def _fit_length(y: np.ndarray, n: int) -> np.ndarray:
 def segment(y: np.ndarray) -> list[tuple[float, float, np.ndarray]]:
     """Split into consecutive 4 s windows as (start_s, end_s, samples).
 
-    A final partial window is kept if it holds at least MIN_SPEECH_SECONDS of audio
-    (it is padded by repetition). Clips shorter than 4 s give one repeated window.
+    A trailing partial window is only kept if it holds at least MIN_TAIL_SECONDS of audio:
+    a short tail repeated up to 4 s creates an artificial, repetitive signal that the model
+    can mistake for synthesis. Clips shorter than 4 s still give one repeated window.
     """
     n = int(config.SEGMENT_SECONDS * config.SAMPLE_RATE)
-    min_len = int(config.MIN_SPEECH_SECONDS * config.SAMPLE_RATE)
+    min_tail = int(config.MIN_TAIL_SECONDS * config.SAMPLE_RATE)
     out = []
     for start in range(0, len(y), n):
         chunk = y[start:start + n]
-        if len(chunk) < min_len and out:
+        if len(chunk) < min_tail and out:
             break
         end = start + len(chunk)
         out.append((start / config.SAMPLE_RATE, end / config.SAMPLE_RATE, _fit_length(chunk, n)))
