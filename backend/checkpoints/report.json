@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T13:59:30",
+  "generated_at": "2026-10-19T19:08:36",
   "model": {
     "name": "Wav2Vec2 (wav2vec2-base, frozen) + LCNN",
     "frontend": "facebook/wav2vec2-base, transformer layer 6, frozen (768 values / 20 ms)",
@@ -104,7 +104,7 @@
     "real_passed": "Share of real voices classified as real.",
     "fake_caught": "Share of AI-generated voices classified as AI-generated.",
     "ci": "95% intervals: bootstrap (500 resamples) for EER, Wilson score for proportions.",
-    "support_rule": "supported: upper 95% bound of test EER <= 10%; experimental: test EER <= 25%; otherwise not supported.",
+    "support_rule": "supported: upper 95% bound of test EER <= 10% and at least 10 different test speakers; experimental: test EER <= 25%; otherwise not supported.",
     "shortcut_probe": "Recording-condition check: a simple classifier that only sees the average spectrum and noise floor. If it reaches EER <= 10%, the language is capped at 'experimental'."
   },
   "overall": {
@@ -536,7 +536,7 @@
       }
     },
     "Malayalam": {
-      "status": "supported",
+      "status": "experimental",
       "test": {
         "eer": 0.0,
         "accuracy": 1.0,

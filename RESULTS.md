@@ -1,6 +1,6 @@
 # FakeAudio Shield: measured results
 
-_Generated from `backend/checkpoints/report.json` (2026-10-19T13:59:30). Do not edit by hand: run `python make_results_md.py`._
+_Generated from `backend/checkpoints/report.json` (2026-10-19T19:08:36). Do not edit by hand: run `python make_results_md.py`._
 
 ## Language support
 
@@ -9,7 +9,7 @@ _Generated from `backend/checkpoints/report.json` (2026-10-19T13:59:30). Do not 
 | English | **experimental** | 16.11% (13.0–18.2%) | 84.4% (81.7–86.8%) | 338/391 | 322/391 | 391 + 391 | 67 | 43.7% |
 | Hindi | **supported** | 0.00% (0.0–0.0%) | 100.0% (96.3–100.0%) | 50/50 | 50/50 | 50 + 50 | 20 | 24.0% |
 | Kannada | **experimental** | 1.67% (0.0–11.7%) | 98.3% (91.1–99.7%) | 30/30 | 29/30 | 30 + 30 | 7 | 13.3% |
-| Malayalam | **supported** | 0.00% (0.0–0.0%) | 100.0% (96.4–100.0%) | 52/52 | 52/52 | 52 + 52 | 3 | 15.4% |
+| Malayalam | **experimental** | 0.00% (0.0–0.0%) | 100.0% (96.4–100.0%) | 52/52 | 52/52 | 52 + 52 | 3 | 15.4% |
 | Tamil | **supported** | 2.44% (0.0–6.1%) | 96.3% (89.8–98.8%) | 38/41 | 41/41 | 41 + 41 | 22 | 15.8% |
 | Telugu | **supported** | 0.00% (0.0–0.0%) | 96.9% (84.3–99.5%) | 15/16 | 16/16 | 16 + 16 | 10 | 12.5% |
 | Marathi | not supported | – | – | – | – | – | – | – |
@@ -17,7 +17,7 @@ _Generated from `backend/checkpoints/report.json` (2026-10-19T13:59:30). Do not 
 | Bengali | not supported | – | – | – | – | – | – | – |
 |  | _no data collected yet_ | | | | | | | |
 
-Status rule: supported: upper 95% bound of test EER <= 10%; experimental: test EER <= 25%; otherwise not supported.
+Status rule: supported: upper 95% bound of test EER <= 10% and at least 10 different test speakers; experimental: test EER <= 25%; otherwise not supported.
 
 Test conditions:
 
@@ -35,7 +35,7 @@ Test conditions:
 - **real passed**: Share of real voices classified as real.
 - **fake caught**: Share of AI-generated voices classified as AI-generated.
 - **ci**: 95% intervals: bootstrap (500 resamples) for EER, Wilson score for proportions.
-- **support rule**: supported: upper 95% bound of test EER <= 10%; experimental: test EER <= 25%; otherwise not supported.
+- **support rule**: supported: upper 95% bound of test EER <= 10% and at least 10 different test speakers; experimental: test EER <= 25%; otherwise not supported.
 - **shortcut probe**: Recording-condition check: a simple classifier that only sees the average spectrum and noise floor. If it reaches EER <= 10%, the language is capped at 'experimental'.
 
 ## Per-attack / per-generator detection (test set)

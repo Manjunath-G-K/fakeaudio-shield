@@ -38,6 +38,7 @@ SPLITS = ["train", "dev", "test"]
 THRESHOLD = 0.5
 # A language is "supported" when its test EER (upper 95% bound) is at most 10%, "experimental" up to 25%.
 SUPPORT_RULE = {"supported": 0.10, "experimental": 0.25}
+MIN_TEST_SPEAKERS = 10   # "supported" also needs at least this many different test speakers
 TEST_CONDITIONS = {
     "English": "ASVspoof 2019 LA evaluation set: unseen speakers and 13 voice-generation systems (A07-A19) never seen in training.",
     "_indic": "Unseen speakers (speaker-disjoint split). Same generator families as training (XTTS-v2, FreeVC from IndicSynth).",
@@ -217,7 +218,8 @@ def support_status(m: dict) -> str:
     if not m or m.get("eer") is None:
         return "not supported"
     upper = (m.get("eer_ci") or [m["eer"], m["eer"]])[1]
-    if upper <= SUPPORT_RULE["supported"]:
+    # too few test speakers cannot show the model generalises to new voices of that language
+    if upper <= SUPPORT_RULE["supported"] and m.get("speakers", MIN_TEST_SPEAKERS) >= MIN_TEST_SPEAKERS:
         return "supported"
     if m["eer"] <= SUPPORT_RULE["experimental"]:
         return "experimental"
@@ -257,7 +259,7 @@ def build_report(model, metrics: dict, train_counts: dict, training: dict, datas
             "real_passed": "Share of real voices classified as real.",
             "fake_caught": "Share of AI-generated voices classified as AI-generated.",
             "ci": "95% intervals: bootstrap (500 resamples) for EER, Wilson score for proportions.",
-            "support_rule": "supported: upper 95% bound of test EER <= 10%; experimental: test EER <= 25%; otherwise not supported.",
+            "support_rule": "supported: upper 95% bound of test EER <= 10% and at least 10 different test speakers; experimental: test EER <= 25%; otherwise not supported.",
         },
         "overall": {k: test.get(k) for k in ("eer", "accuracy", "macro_eer", "macro_accuracy",
                                              "bonafide_correct", "bonafide_total", "spoof_correct", "spoof_total")},
