@@ -58,12 +58,13 @@ backend/
   fetch_indic_subset.py      downloads Kathbath (real) + IndicSynth (fake) samples
   requirements.txt
 frontend/                    React (Vite) website
-  src/components/Instrument.jsx    detector: input, sample keys (1–5), readout, session log, export
-  src/components/Spectrogram.jsx   canvas spectrogram with axes, scan line and playhead
-  src/components/Sheet.jsx         signal chain, live measurements, limits, data & privacy
-  src/lib/spectrogram.js           in-browser decode to 16 kHz + STFT (no libraries)
+  src/components/Checker.jsx       main card: Record / Upload / Try a sample → listen → check → result
+  src/components/Recorder.jsx      microphone recording with live level meter (max 60 s)
+  src/components/AudioReview.jsx   waveform + play/pause + seek for the chosen audio
+  src/components/Info.jsx          recent checks, how it works, accuracy (live), good to know
+  src/lib/audio.js                 raw mic capture (AudioWorklet) → 16-bit WAV, waveform peaks
   src/api.js                       calls to /api/health and /api/predict
-  public/samples/                  5 ASVspoof 2019 eval clips for the sample keys (ODC-By)
+  public/samples/                  5 ASVspoof 2019 eval clips for "Try a sample" (ODC-By)
 start-backend.bat, start-frontend.bat   double-click launchers
 DEMO.md                      demo script and plain-language explanation
 PROGRESS.md                  progress notes and how to resume the multilingual work

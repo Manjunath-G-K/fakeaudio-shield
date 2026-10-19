@@ -20,35 +20,40 @@ cd D:\FakeAudio\frontend
 npm run dev
 ```
 
-The top of the page should show a green line: **"Wav2Vec2 (wav2vec2-base, frozen) + LCNN ready · test EER …"**.
-If it is red, the backend is not running or the model file is missing.
+The top-right of the page should show a green **Ready** badge. If it says **Offline** (red),
+the backend is not running or the model file is missing, and a banner explains what to do.
 
 ## 2. What to show
 
 **Suggested walkthrough of the website (about 5 minutes):**
 
-The website is built as an instrument: the detector is the page, and the explanation sits
-below it as a numbered technical sheet. "MODEL ONLINE" in the top-right confirms the backend is up.
+The page has one card in the middle with three ways to add audio: **Record**, **Upload a
+file**, **Try a sample**. The green **Ready** badge in the top-right means the backend is up.
 
-1. **Detector:** press the keys **1–5** (or click the sample keys). Each run shows:
-   - the **spectrogram** of the clip (0–8 kHz, computed in the browser)
-   - the verdict, **AUTHENTIC** or **SYNTHETIC**, with the confidence
-   - the P(spoof) and P(real) meters with a 50% mark, and one block per 4-second segment
-   - the **reference** (ground truth) for samples, marked MATCH or MISS
+1. **Try a sample** (the most reliable part of the demo). For each clip: **Use → ▶ listen →
+   Check this voice**. The result is in plain words, with a 10-dot confidence meter and the
+   true answer:
+   - *Real person (1)* → **Likely a real human voice**, correct
+   - *AI voice: voice conversion* → **Likely AI-generated**, correct
+   - *AI voice: neural text-to-speech* → Likely real, **missed**. This is the honest limitation.
 
-   Suggested order:
-   - **1** real voice → AUTHENTIC, MATCH
-   - **3** A17 voice conversion → SYNTHETIC, MATCH
-   - **5** A10 neural TTS → AUTHENTIC, **MISS**. This is the honest limitation.
+   **Your recent checks** under the card lists all three side by side.
+2. **Record**: tap the mic, say a sentence for 5–15 seconds, tap stop, press ▶ to listen,
+   then **Check this voice**. You can also hold a phone near the laptop and play a suspicious
+   recording into the mic. The result shows a note that live mic recordings are less
+   reliable. Say this out loud: the model learned from studio-quality audio, so a laptop mic
+   in a noisy room can be judged wrongly. *Test the mic on the demo laptop beforehand.*
+3. **Upload**: drag in any file. A broken or silent file shows a friendly error.
+4. Open **Technical details** on a result to show the exact probabilities, the 4-second parts
+   and the model (Wav2Vec2 + MFCC/log-mel → LCNN). **Download report** saves it as JSON.
+5. Scroll down: **How it works** (3 steps), **How accurate is it?** (399/400 real voices
+   recognised, 252/400 unseen AI voices caught, EER 8.25%; open *See results for each AI
+   voice tool*) and **Good to know**.
 
-   The **session log** under the detector keeps every run, so the three are visible side by
-   side. **P** plays the clip with a playhead moving over the spectrogram. **Export report**
-   downloads the result as JSON. Then drag in your own file, or a broken one, to show the
-   error handling (the verdict shows REJECTED with the reason).
-2. **01 Signal chain:** the pipeline as a schematic, with the exact settings.
-3. **02 Measurements:** live dev/test numbers and the per-attack detection chart. Point at
-   A10 (16%) and A13 (100%) to show why sample 5 was missed.
-4. **03 Limits** and **04 Data & privacy**: what it can't do, and that audio never leaves the laptop.
+**Microphone notes:** the browser asks for permission the first time; click Allow. The mic
+only works at `http://localhost:5173` (or over https), not via the laptop's network IP.
+Recording captures raw audio with noise suppression and echo cancellation switched off,
+because that processing alters the voice in ways a detector can mistake for AI.
 
 The same clips also exist as files in `D:\FakeAudio\data\demo_samples` (for uploading by hand).
 They are from the ASVspoof 2019 **evaluation** set: the model never saw these speakers or
