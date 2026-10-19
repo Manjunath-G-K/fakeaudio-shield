@@ -30,19 +30,22 @@ def main():
         "",
         "## Language support",
         "",
-        "| Language | Status | Test EER (95% CI) | Accuracy (95% CI) | Real passed | AI caught | Test clips (real + AI) | Test speakers |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Language | Status | Test EER (95% CI) | Accuracy (95% CI) | Real passed | AI caught | Test clips (real + AI) | Test speakers | Recording check (channel-only EER) |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for lang, d in L.items():
         t = d["test"]
         out.append(f"| {lang} | **{d['status']}** | {pct(t['eer'], 2)} ({ci(t['eer_ci'])}) | {pct(t['accuracy'])} ({ci(t['accuracy_ci'])}) | "
                    f"{t['bonafide_correct']}/{t['bonafide_total']} | {t['spoof_correct']}/{t['spoof_total']} | "
-                   f"{t['bonafide_total']} + {t['spoof_total']} | {t['speakers']} |")
+                   f"{t['bonafide_total']} + {t['spoof_total']} | {t['speakers']} | "
+                   + (f"{'⚠ ' if d['shortcut_probe']['shortcut_risk'] else ''}{pct(d['shortcut_probe']['channel_eer'])}" if d.get("shortcut_probe") else "–") + " |")
+        if d.get("status_reason"):
+            out.append(f"|  | _{d['status_reason']}_ | | | | | | | |")
     for lang in ALL:
         if lang not in L:
             why = (ds.get("excluded_languages") or {}).get(lang, "no data collected yet")
-            out.append(f"| {lang} | not supported | – | – | – | – | – | – |")
-            out.append(f"|  | _{why}_ | | | | | | |")
+            out.append(f"| {lang} | not supported | – | – | – | – | – | – | – |")
+            out.append(f"|  | _{why}_ | | | | | | | |")
     out += ["", f"Status rule: {rep['metric_definitions']['support_rule']}", "",
             "Test conditions:", ""]
     out += [f"- **{lang}**: {d['test_condition']}" for lang, d in L.items()]
