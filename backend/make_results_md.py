@@ -1,0 +1,88 @@
+"""Write RESULTS.md from backend/checkpoints/report.json, so documented numbers always
+match the trained model (nothing typed by hand).
+
+    python make_results_md.py
+"""
+import sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to cp1252
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+ALL = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "Marathi", "Bengali"]
+
+
+def pct(x, d=1):
+    return "–" if x is None else f"{x * 100:.{d}f}%"
+
+
+def ci(c):
+    return "–" if not c else f"{c[0] * 100:.1f}–{c[1] * 100:.1f}%"
+
+
+def main():
+    rep = json.loads((ROOT / "backend" / "checkpoints" / "report.json").read_text())
+    L, ds, tr, m = rep["languages"], rep.get("dataset") or {}, rep["training"], rep["model"]
+    out = [
+        "# FakeAudio Shield: measured results",
+        "",
+        f"_Generated from `backend/checkpoints/report.json` ({rep['generated_at']}). Do not edit by hand: run `python make_results_md.py`._",
+        "",
+        "## Language support",
+        "",
+        "| Language | Status | Test EER (95% CI) | Accuracy (95% CI) | Real passed | AI caught | Test clips (real + AI) | Test speakers |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for lang, d in L.items():
+        t = d["test"]
+        out.append(f"| {lang} | **{d['status']}** | {pct(t['eer'], 2)} ({ci(t['eer_ci'])}) | {pct(t['accuracy'])} ({ci(t['accuracy_ci'])}) | "
+                   f"{t['bonafide_correct']}/{t['bonafide_total']} | {t['spoof_correct']}/{t['spoof_total']} | "
+                   f"{t['bonafide_total']} + {t['spoof_total']} | {t['speakers']} |")
+    for lang in ALL:
+        if lang not in L:
+            why = (ds.get("excluded_languages") or {}).get(lang, "no data collected yet")
+            out.append(f"| {lang} | not supported | – | – | – | – | – | – |")
+            out.append(f"|  | _{why}_ | | | | | | |")
+    out += ["", f"Status rule: {rep['metric_definitions']['support_rule']}", "",
+            "Test conditions:", ""]
+    out += [f"- **{lang}**: {d['test_condition']}" for lang, d in L.items()]
+    out += ["", "## Metric definitions", ""]
+    out += [f"- **{k.replace('_', ' ')}**: {v}" for k, v in rep["metric_definitions"].items()]
+    out += ["", "## Per-attack / per-generator detection (test set)", ""]
+    for lang, d in L.items():
+        att = d["test"].get("by_attack") or {}
+        if att:
+            out.append(f"**{lang}**: " + ", ".join(f"{a} {v['spoof_correct']}/{v['spoof_total']}" for a, v in att.items()))
+            out.append("")
+    if ds:
+        out += ["## Dataset", "", f"{ds['records_found']} clips collected, {ds['records_kept']} kept after cleaning and balancing.", "",
+                "| Language | Train (real + AI) | Dev | Test | Hours | Sources |", "|---|---|---|---|---|---|"]
+        for lang, d in ds["languages"].items():
+            out.append(f"| {lang} | " + " | ".join(f"{d[s]['bonafide']} + {d[s]['spoof']} ({d[s]['speakers']} spk)" for s in ("train", "dev", "test"))
+                       + f" | {d['hours']} | {', '.join(d['sources'])} |")
+        out += ["", "Removed during cleaning:", ""]
+        out += [f"- {why}: {n}" for why, n in ds["removed"].items()] or ["- nothing"]
+        out += ["", "Sources and licences:", ""]
+        out += [f"- [{s}]({v['url']}): {v['license']}" for s, v in ds["sources"].items()]
+        out += [""] + [f"- {n}" for n in ds["notes"]]
+    out += ["", "## Model and training", "",
+            f"- Speech model: {m['frontend']}", f"- Spectral features: {m['spectral_features']}",
+            f"- Classifier: {m['classifier']} ({m['trainable_parameters']:,} trainable parameters, arch {m['arch']})",
+            f"- Input: {m['segment_seconds']} s segments, scores averaged; threshold P(AI) ≥ {m['threshold']}",
+            f"- Training: {tr.get('epochs_run')} epochs (best {tr.get('best_epoch')}), {round((tr.get('seconds') or 0) / 60)} min on {tr.get('device', 'CPU')}, "
+            f"{tr.get('optimizer')}, lr {tr.get('learning_rate')}, batch {tr.get('batch_size')}",
+            f"- Balancing: {tr.get('balancing')}", f"- Model selection: {tr.get('model_selection')}", ""]
+    study_path = ROOT / "backend" / "checkpoints" / "data_size_study.json"
+    if study_path.exists():
+        st = json.loads(study_path.read_text())
+        out += ["## How much training data is needed? (learning curve)", "",
+                f"{st['model']}; {st['epochs']} epochs; {st['note']}", "",
+                "| Training clips | Dev EER | Test EER |", "|---|---|---|"]
+        out += [f"| {r['train_clips']:,} | {pct(r['dev_eer'])} | {pct(r['test_eer'])} |" for r in st["results"]]
+        out.append("")
+    (ROOT / "RESULTS.md").write_text("\n".join(out), encoding="utf-8")
+    print(f"wrote {ROOT / 'RESULTS.md'}")
+
+
+if __name__ == "__main__":
+    main()
