@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+data
+docs
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/tests
+backend/checkpoints/*.tmp
+frontend/node_modules
+frontend/dist
+.env
+.env.*
+*.log

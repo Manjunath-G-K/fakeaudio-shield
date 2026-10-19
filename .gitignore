@@ -1,18 +1,33 @@
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 backend/.venv/
+.venv/
 
 # Node
 frontend/node_modules/
 frontend/dist/
 
-# Dataset and cached features (downloaded / generated locally)
+# Dataset audio and cached features (downloaded / generated locally, never committed)
 data/*
 !data/manifest.csv
 !data/dataset_report.json
 
-# Local editor / tool settings
+# Partially written checkpoints
+backend/checkpoints/*.tmp
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs and OS / editor files
+*.log
+.DS_Store
+Thumbs.db
 .claude/
 .idea/
 .vscode/
