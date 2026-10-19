@@ -94,6 +94,7 @@ def main():
     ap.add_argument("--languages", nargs="+", default=LANGUAGES)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--tag", default="", help="write manifest_<kind>_<tag>.csv (lets two downloads run in parallel)")
     args = ap.parse_args()
 
     dataset, config_of, splits, audio_col, spk_col = SOURCES[args.kind]
@@ -103,11 +104,12 @@ def main():
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    manifest = out / f"manifest_{args.kind}.csv"   # separate files so both kinds can download at once
+    # separate files per kind (and per --tag) so several downloads can run at once
+    manifest = out / f"manifest_{args.kind}{'_' + args.tag if args.tag else ''}.csv"
     done = set()
-    if manifest.exists():
-        with manifest.open(newline="", encoding="utf-8") as f:
-            done = {(r["source"], r["row"]) for r in csv.DictReader(f)}
+    for m in out.glob(f"manifest_{args.kind}*.csv"):          # skip rows any download already has
+        with m.open(newline="", encoding="utf-8") as f:
+            done |= {(r["source"], r["row"]) for r in csv.DictReader(f)}
     lock = threading.Lock()
     new_file = not manifest.exists()
     mf = manifest.open("a", newline="", encoding="utf-8")

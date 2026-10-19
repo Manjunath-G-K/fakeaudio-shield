@@ -62,9 +62,7 @@ def collect(data: Path) -> list[dict]:
                              "source": "ASVspoof 2019 LA", "attack": "" if f[3] == "-" else f[3]})
     indic = data / "indic"
     for kind, source in (("real", "Kathbath"), ("fake", "IndicSynth")):
-        m = indic / f"manifest_{kind}.csv"
-        if not m.exists():
-            continue
+      for m in sorted(indic.glob(f"manifest_{kind}*.csv")):     # parallel downloads write separate files
         with m.open(newline="", encoding="utf-8") as fh:
             for r in csv.DictReader(fh):
                 audio = indic / r["path"]

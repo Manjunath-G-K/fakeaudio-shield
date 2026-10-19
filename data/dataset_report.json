@@ -1,11 +1,10 @@
 {
-  "generated_at": "2026-10-19T12:36:09",
-  "records_found": 5600,
-  "records_kept": 4074,
+  "generated_at": "2026-10-19T13:25:55",
+  "records_found": 6671,
+  "records_kept": 6092,
   "removed": {
     "duration outside 1.0-60.0 s": 13,
-    "language not usable yet (missing real or AI clips)": 1500,
-    "class balancing (down-sampled)": 13
+    "class balancing (down-sampled)": 566
   },
   "removed_examples": {
     "duration outside 1.0-60.0 s": [
@@ -14,13 +13,6 @@
       "LA/ASVspoof2019_LA_train/flac/LA_T_6188162.flac",
       "LA/ASVspoof2019_LA_dev/flac/LA_D_6735934.flac",
       "LA/ASVspoof2019_LA_eval/flac/LA_E_1673131.flac"
-    ],
-    "language not usable yet (missing real or AI clips)": [
-      "indic/Hindi/fake/train_34657.wav",
-      "indic/Hindi/fake/train_97358.wav",
-      "indic/Hindi/fake/train_29920.wav",
-      "indic/Hindi/fake/train_118914.wav",
-      "indic/Hindi/fake/train_182443.wav"
     ],
     "class balancing (down-sampled)": [
       "LA/ASVspoof2019_LA_train/flac/LA_T_2547007.flac",
@@ -51,15 +43,119 @@
         "ASVspoof 2019 LA"
       ],
       "hours": 3.85
+    },
+    "Hindi": {
+      "train": {
+        "bonafide": 122,
+        "spoof": 122,
+        "speakers": 59
+      },
+      "dev": {
+        "bonafide": 28,
+        "spoof": 28,
+        "speakers": 14
+      },
+      "test": {
+        "bonafide": 50,
+        "spoof": 50,
+        "speakers": 20
+      },
+      "sources": [
+        "IndicSynth",
+        "Kathbath"
+      ],
+      "hours": 0.59
+    },
+    "Kannada": {
+      "train": {
+        "bonafide": 169,
+        "spoof": 169,
+        "speakers": 44
+      },
+      "dev": {
+        "bonafide": 32,
+        "spoof": 32,
+        "speakers": 7
+      },
+      "test": {
+        "bonafide": 30,
+        "spoof": 30,
+        "speakers": 7
+      },
+      "sources": [
+        "IndicSynth",
+        "Kathbath"
+      ],
+      "hours": 1.04
+    },
+    "Malayalam": {
+      "train": {
+        "bonafide": 134,
+        "spoof": 134,
+        "speakers": 8
+      },
+      "dev": {
+        "bonafide": 26,
+        "spoof": 26,
+        "speakers": 6
+      },
+      "test": {
+        "bonafide": 52,
+        "spoof": 52,
+        "speakers": 3
+      },
+      "sources": [
+        "IndicSynth",
+        "Kathbath"
+      ],
+      "hours": 1.23
+    },
+    "Tamil": {
+      "train": {
+        "bonafide": 118,
+        "spoof": 118,
+        "speakers": 74
+      },
+      "dev": {
+        "bonafide": 7,
+        "spoof": 7,
+        "speakers": 5
+      },
+      "test": {
+        "bonafide": 41,
+        "spoof": 41,
+        "speakers": 22
+      },
+      "sources": [
+        "IndicSynth",
+        "Kathbath"
+      ],
+      "hours": 0.62
+    },
+    "Telugu": {
+      "train": {
+        "bonafide": 161,
+        "spoof": 161,
+        "speakers": 59
+      },
+      "dev": {
+        "bonafide": 23,
+        "spoof": 23,
+        "speakers": 8
+      },
+      "test": {
+        "bonafide": 16,
+        "spoof": 16,
+        "speakers": 10
+      },
+      "sources": [
+        "IndicSynth",
+        "Kathbath"
+      ],
+      "hours": 0.81
     }
   },
-  "excluded_languages": {
-    "Hindi": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
-    "Kannada": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
-    "Malayalam": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
-    "Tamil": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready",
-    "Telugu": "no real human speech yet (Kathbath download pending); 300 AI-generated clips ready"
-  },
+  "excluded_languages": {},
   "sources": {
     "ASVspoof 2019 LA": {
       "license": "ODC-By 1.0",
