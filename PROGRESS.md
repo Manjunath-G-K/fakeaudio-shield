@@ -9,30 +9,32 @@ _Last updated: 19 Oct 2026. Measured numbers live in [RESULTS.md](RESULTS.md) (g
 | Backend API (`/api/health`, `/api/report`, `/api/data-size-study`, `/api/predict`) | ✅ Done, tested |
 | Dataset pipeline: dedupe, validation, speaker-disjoint splits, balancing, audit report | ✅ Done (`prepare_dataset.py`) |
 | One-command reproduction (`run_pipeline.py`) | ✅ Done |
-| English model: Wav2Vec2 (frozen) + LCNN, dev-calibrated threshold | ✅ Trained, evaluated on 782 unseen clips; status **experimental** |
+| Multilingual model: Wav2Vec2 (frozen) + LCNN, dev-calibrated threshold | ✅ Trained on English + 5 Indian languages, evaluated per language on unseen speakers |
 | Learning-curve study (how many clips are needed) | ✅ Done (`data_size_study.py`) |
 | Website: Try-it page (record / upload / samples, language selector) + Results page | ✅ Done, checked on desktop and at 375 px |
-| Automated tests | ✅ 15/15 passing (`pytest`) |
-| Indian languages (Hindi, Kannada, Tamil, Telugu, Malayalam) | ⛔ **Blocked:** 1,500 AI clips ready, but **0 real clips**. Kathbath needs a Hugging Face login, and no token has reached this machine. |
+| Automated tests | ✅ 16/16 passing (`pytest`) |
+| Indian languages | ✅ Hindi, Tamil, Telugu **supported**; Kannada, Malayalam **experimental** (fewer than 10 test speakers). English **experimental**. |
+| Recording-condition check (`shortcut_probe.py`) | ✅ Done. Indian sources partly separable by recording quality alone (12–24% EER), so treat those scores as optimistic |
 | Marathi, Bengali | ⛔ No data collected |
 
-## To add the Indian languages (manual step, then automatic)
+## Reproduce everything
 
-1. Accept the terms at https://huggingface.co/datasets/ai4bharat/Kathbath and create a Read token.
-2. Log in on this laptop (PowerShell, one line at a time):
-   ```powershell
-   $t = (Read-Host "Paste token").Trim()
-   & "C:\Users\manju\AppData\Local\Programs\Python\Python313\Scripts\hf.exe" auth login --token $t
-   Remove-Variable t
-   ```
-   Check: `Test-Path $HOME\.cache\huggingface\token` must print `True`.
-3. Run the pipeline. It downloads the real speech (roughly 60–90 min on this connection),
-   cleans the data, trains and evaluates every language, and regenerates RESULTS.md:
-   ```powershell
-   cd D:\FakeAudio\backend
-   .venv\Scripts\python run_pipeline.py --languages Hindi Kannada Tamil Telugu Malayalam
-   ```
-4. Restart the backend. The website shows the new languages and their measured results automatically.
+Kathbath needs a one-time Hugging Face login (accept the terms, create a Read token, then
+`hf auth login`; never paste the token anywhere else). After that:
+
+```powershell
+cd D:\FakeAudio\backend
+.venv\Scripts\python run_pipeline.py --languages Hindi Kannada Tamil Telugu Malayalam
+```
+
+This downloads, cleans, trains, evaluates and regenerates RESULTS.md. Restart the backend afterwards.
+
+## Next steps
+
+- More test speakers for Kannada and Malayalam, so they can qualify as "supported".
+- Real speech recorded in the same conditions as the AI clips, to remove the recording-quality shortcut.
+- Marathi and Bengali data.
+- More voice-generator variety for English (A10-type neural TTS is still missed most of the time).
 
 ## Decisions taken
 

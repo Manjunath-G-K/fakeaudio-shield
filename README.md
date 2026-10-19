@@ -126,9 +126,18 @@ Errors return `{"detail": "..."}`:
 
 ## Limitations
 
-- **Languages:** the shipped model is evaluated on **English only**. Indian languages are
-  built into the pipeline, but they are waiting for the Kathbath real-speech download, which
-  needs a Hugging Face login. Without real speech they are excluded, not claimed.
+- **Languages:** English, Hindi, Kannada, Tamil, Telugu and Malayalam are evaluated (see
+  [RESULTS.md](RESULTS.md) for status per language). Marathi and Bengali have no data yet.
+- **Small Indian test sets:** 32–104 clips and 3–22 speakers per language, so the
+  confidence intervals are wide. A language needs at least 10 test speakers to be called
+  "supported".
+- **Recording conditions differ between the Indian sources:** real Kathbath speech is
+  crowd-sourced phone and laptop audio, while IndicSynth is clean synthesis. A
+  recording-condition-only check already reaches 12–24% EER there (versus 44% for English),
+  so the near-perfect Indian scores are probably optimistic.
+- **English is weaker in the multilingual model** (EER about 16%) than in an English-only
+  model trained earlier (7.8%). Sharing a small classifier across six languages costs
+  English accuracy.
 - **Unseen generators:** they are the weak spot. Some ASVspoof attacks (for example A10)
   are mostly missed (see the per-attack table).
 - **Recording conditions:** live microphone audio, phone calls, noise and music differ from the

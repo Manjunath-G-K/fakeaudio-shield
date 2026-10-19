@@ -28,18 +28,25 @@ the backend is not running or the model file is missing, and a banner explains w
 **Suggested walkthrough (about 6 minutes).** The top bar has two pages, **Try it** and
 **Results**. The green **Ready** badge means the backend is up.
 
-1. **Try it → Try a sample.** The language selector above the card says *English
-   (experimental)*. For each clip: **Use → ▶ listen → Check this voice**:
-   - *Real person (1)* → **Likely a real human voice**, correct
-   - *AI voice: voice conversion* → **Likely AI-generated**, high confidence, correct
-   - *AI voice: neural text-to-speech* → **Likely AI-generated, but only just (about 50%, low
-     confidence)**. Point out that this generator type (A10) is the model's weak spot: it is
-     caught only about a third of the time on the test set.
+1. **Try it → Try a sample.** Pick a language in the selector above the card. Each Indian
+   language has one real and one AI clip from its test set; English has five. For each clip:
+   **Use → ▶ listen → Check this voice**. Good order:
+   - *Hindi → Real person* → **Likely a real human voice**, correct
+   - *Hindi → AI voice* → **Likely AI-generated**, correct
+   - *English → AI voice: neural text-to-speech* → judged **real: a miss**. This generator
+     type (A10) is the model's weak spot: it's caught only about a third of the time on the
+     test set.
+
+   Expect 14 of the 15 sample clips to be correct. The Kannada and Telugu real voices are
+   borderline (about 52%) and are shown as "low confidence".
 
    Each result also says how reliable the model is **for the selected language**, using the
    measured numbers. **Your recent checks** lists the runs side by side.
-2. **Language coverage** (scroll down): English shows its measured accuracy ring. Hindi,
-   Kannada, Tamil, Telugu and Malayalam show *In progress: waiting for real-speech data*.
+2. **Language coverage** (scroll down): six languages with measured accuracy rings.
+   - **Supported:** Hindi, Tamil, Telugu
+   - **Experimental:** English, Kannada, Malayalam (Malayalam because only 3 test speakers)
+   - **In progress:** Marathi and Bengali
+
    Nothing is claimed without evaluation.
 3. **Record:** tap the mic, speak for 5–15 s, stop, ▶ listen, **Check this voice**. The result
    warns that live mic audio is less reliable: the model learned from studio-quality audio.
@@ -64,13 +71,13 @@ The same clips also exist as files in `D:\FakeAudio\data\demo_samples` (for uplo
 They are from the ASVspoof 2019 **evaluation** set: the model never saw these speakers or
 these fake-voice systems during training.
 
-| File | Expected result | What it demonstrates |
+| File | Result (current model) | What it demonstrates |
 |---|---|---|
 | `real_1_….flac`, `real_2_…`, `real_3_…` | REAL / Bona-fide | Genuine human speech |
-| `fake_A13_….flac` | AI-GENERATED, 98.5% | Combined TTS + voice-conversion system |
-| `fake_A17_….flac` | AI-GENERATED, 99.8% | Voice conversion (VAE + waveform filtering) |
-| `fake_A10_….flac` | **REAL, 90.7%: a miss** | Neural TTS (Tacotron 2 + WaveRNN). Show this deliberately as the limitation (see below). |
-| `real_1_as_mp3.mp3` | REAL, 99.5% | Other formats work (MP3, 44.1 kHz → resampled to 16 kHz) |
+| `fake_A13_….flac` | AI-GENERATED, 96.6% | Combined TTS + voice-conversion system |
+| `fake_A17_….flac` | AI-GENERATED, 99.1% | Voice conversion (VAE + waveform filtering) |
+| `fake_A10_….flac` | **REAL, 71.9%: a miss** | Neural TTS (Tacotron 2 + WaveRNN). Show this deliberately as the limitation (see below). |
+| `real_1_as_mp3.mp3` | REAL, 89.1% | Other formats work (MP3, 44.1 kHz → resampled to 16 kHz) |
 | `invalid_not_audio.wav` | Error: "Could not decode the file as audio" | Invalid files are handled |
 | `invalid_silent.wav` | Error: "The audio is silent" | Silence is rejected, not guessed |
 
@@ -120,19 +127,13 @@ confidence, probability bars and details.**
   appear in training**: this is the honest "new fake generator" test.
 - Metric: **Equal Error Rate (EER)**, the point where false alarms equal misses. Lower is better.
 
-Measured results of the included English model (stopped after epoch 3):
+The measured results per language are on the **Results** page and in `RESULTS.md`, both
+generated from the model's evaluation report.
 
-| Split | EER | Real passed | Fake caught (at 50%) |
-|---|---|---|---|
-| Dev (seen attack types) | 2.00% | 396 / 400 | 364 / 400 |
-| **Test (13 unseen attack types)** | **8.25%** | **399 / 400** | **252 / 400 (63%)** |
-
-In one sentence for the guide: *"It almost never calls a real voice fake, and it separates
-real from fake well (8.25% EER on unseen attacks). But with the default threshold it
-misses about a third of fakes from generators it was never trained on. That's why
-more diverse training data is our next step."*
-
-Per-attack detection rates are in the README.
+In one sentence for the guide: *"It's evaluated on six languages with speakers it never
+heard. The Indian languages score very high, but their test sets are small and their real
+and AI recordings differ in quality, so we label those results cautiously. English is
+tested against 13 voice generators it never saw, and some of those still slip through."*
 
 ## 5. Questions the guide may ask
 
@@ -143,13 +144,15 @@ Per-attack detection rates are in the README.
 - **Why frozen instead of fine-tuned (the PPT said fine-tune)?** CPU-only laptop.
   Fine-tuning 95 million parameters is not feasible here. With a GPU, the same code can
   be extended to fine-tune.
-- **Does it work for Indian languages?** The pipeline and data tooling for Hindi,
-  Kannada, Tamil, Telugu, Malayalam, Marathi and Bengali are built (IndicSynth fake +
-  Kathbath real, split by speaker). The current demo model is **English-only**; the
-  multilingual model needs the real-speech download to finish (see `PROGRESS.md`).
-- **Why stop after 3 epochs?** Each epoch takes 9–20 minutes on this CPU. Dev EER was
-  already 2.00%, and the best epoch is saved automatically. Longer training is possible
-  with the same command.
+- **Does it work for Indian languages?** Yes, five are evaluated: Hindi, Tamil and Telugu
+  are supported; Kannada and Malayalam are experimental. Real speech is from Kathbath, AI
+  speech from IndicSynth, split by speaker. The honest caveat: the test sets are small, and
+  a recording-condition check shows the two sources partly differ by recording quality.
+- **Why did English get worse?** The multilingual model shares one small classifier across
+  six languages. An English-only model trained earlier reached 7.8% EER; the multilingual
+  one has about 16%.
+- **How long did training take?** About 25 minutes on this laptop's CPU (6 epochs; the
+  best was epoch 3). Wav2Vec2 features are computed once and cached.
 - **Limitations?** It is trained on a subset (2,500 clips). New voice cloners, phone
   calls, noise or music can reduce accuracy. The result supports human judgement and is
   not proof.
