@@ -25,6 +25,26 @@ export async function getHealth() {
   }
 }
 
+/** Full evaluation report (per-language metrics, dataset, training). null if unavailable. */
+export async function getReport() {
+  try {
+    const res = await fetch("/api/report");
+    return res.ok ? await res.json() : { error: await readError(res) };
+  } catch {
+    return { error: "Cannot reach the backend." };
+  }
+}
+
+/** Learning-curve study (training clips vs EER). null if not run yet. */
+export async function getDataSizeStudy() {
+  try {
+    const res = await fetch("/api/data-size-study");
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function predict(file) {
   const form = new FormData();
   form.append("file", file);
