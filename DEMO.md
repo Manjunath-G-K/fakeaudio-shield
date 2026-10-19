@@ -25,30 +25,35 @@ the backend is not running or the model file is missing, and a banner explains w
 
 ## 2. What to show
 
-**Suggested walkthrough of the website (about 5 minutes):**
+**Suggested walkthrough (about 6 minutes).** The top bar has two pages, **Try it** and
+**Results**. The green **Ready** badge means the backend is up.
 
-The page has one card in the middle with three ways to add audio: **Record**, **Upload a
-file**, **Try a sample**. The green **Ready** badge in the top-right means the backend is up.
-
-1. **Try a sample** (the most reliable part of the demo). For each clip: **Use → ▶ listen →
-   Check this voice**. The result is in plain words, with a 10-dot confidence meter and the
-   true answer:
+1. **Try it → Try a sample.** The language selector above the card says *English
+   (experimental)*. For each clip: **Use → ▶ listen → Check this voice**:
    - *Real person (1)* → **Likely a real human voice**, correct
-   - *AI voice: voice conversion* → **Likely AI-generated**, correct
-   - *AI voice: neural text-to-speech* → Likely real, **missed**. This is the honest limitation.
+   - *AI voice: voice conversion* → **Likely AI-generated**, high confidence, correct
+   - *AI voice: neural text-to-speech* → **Likely AI-generated, but only just (about 50%, low
+     confidence)**. Point out that this generator type (A10) is the model's weak spot: it is
+     caught only about a third of the time on the test set.
 
-   **Your recent checks** under the card lists all three side by side.
-2. **Record**: tap the mic, say a sentence for 5–15 seconds, tap stop, press ▶ to listen,
-   then **Check this voice**. You can also hold a phone near the laptop and play a suspicious
-   recording into the mic. The result shows a note that live mic recordings are less
-   reliable. Say this out loud: the model learned from studio-quality audio, so a laptop mic
-   in a noisy room can be judged wrongly. *Test the mic on the demo laptop beforehand.*
-3. **Upload**: drag in any file. A broken or silent file shows a friendly error.
-4. Open **Technical details** on a result to show the exact probabilities, the 4-second parts
-   and the model (Wav2Vec2 + MFCC/log-mel → LCNN). **Download report** saves it as JSON.
-5. Scroll down: **How it works** (3 steps), **How accurate is it?** (399/400 real voices
-   recognised, 252/400 unseen AI voices caught, EER 8.25%; open *See results for each AI
-   voice tool*) and **Good to know**.
+   Each result also says how reliable the model is **for the selected language**, using the
+   measured numbers. **Your recent checks** lists the runs side by side.
+2. **Language coverage** (scroll down): English shows its measured accuracy ring. Hindi,
+   Kannada, Tamil, Telugu and Malayalam show *In progress: waiting for real-speech data*.
+   Nothing is claimed without evaluation.
+3. **Record:** tap the mic, speak for 5–15 s, stop, ▶ listen, **Check this voice**. The result
+   warns that live mic audio is less reliable: the model learned from studio-quality audio.
+   *Test the mic on the demo laptop beforehand.*
+4. **Upload:** drag in any file. A broken or silent file shows a friendly error.
+5. **Results page:** walk top to bottom:
+   - the summary numbers
+   - the per-language EER chart with 95% confidence intervals and the support rule
+   - the per-attack bars (A10 is the weak spot)
+   - *Languages that need more work*
+   - the dataset audit with cleaning counts and licences
+   - the training curve
+   - **How much data is enough?** The learning curve shows test EER stops improving after
+     about 1,250 clips. That's why the project uses a few thousand balanced clips, not 100,000.
 
 **Microphone notes:** the browser asks for permission the first time; click Allow. The mic
 only works at `http://localhost:5173` (or over https), not via the laptop's network IP.

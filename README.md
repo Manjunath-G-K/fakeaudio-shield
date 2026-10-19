@@ -1,312 +1,150 @@
 # FakeAudio Shield
 
-**AI-Generated Voice & Deepfake Audio Detection System**
+**AI-generated voice and deepfake audio detection.** Record, upload or pick a sample, and the
+app estimates whether the voice is real human speech or AI-generated, with a confidence score,
+in about a second on a laptop CPU.
 
-A web tool that checks whether a voice recording is likely genuine human speech or
-AI-generated. Upload an audio file and get **Real / Bona-fide** or
-**AI-generated / Spoof**, with a confidence score.
+- **Measured results, per language:** see [RESULTS.md](RESULTS.md) (generated from the
+  evaluation report) or the **Results** page in the app. No number in this README is typed by hand.
+- **Demo script:** [DEMO.md](DEMO.md) · **Progress / open items:** [PROGRESS.md](PROGRESS.md)
 
-> Major Project · B.E. Computer Science & Engineering · 2025–26
-> University B.D.T College of Engineering, Davangere (VTU, Belagavi)
+## Quick start (Windows)
 
----
+Prerequisites: Python 3.11+, Node.js 18+, `ffmpeg` on PATH (for M4A uploads).
 
-## Quick start (demo)
+```powershell
+# one-time setup
+cd backend
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+cd ..\frontend
+npm install
+```
 
-A trained English model is included. On Windows, double-click `start-backend.bat`, wait
-for `FakeAudio Shield: Model ready`, then double-click `start-frontend.bat`. See
-[DEMO.md](DEMO.md) for what to show and how to explain it.
+Run it with two double-clicks: **`start-backend.bat`** (wait for `Model ready`), then
+**`start-frontend.bat`**, which opens http://localhost:5173. Or by hand:
+
+```powershell
+cd backend;  .venv\Scripts\python -m uvicorn app.main:app --port 8000     # terminal 1
+cd frontend; npm run dev                                                   # terminal 2
+```
+
+The trained model is included (`backend/checkpoints/fakeaudio_lcnn.pt`), so no training is
+needed for the demo. The microphone works on `http://localhost` (or https), not on a LAN IP.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    A["1 · Upload audio<br/>(React)"] --> B["2 · Preprocess<br/>16 kHz mono, trim silence,<br/>normalise, 4 s segments"]
-    B --> C["3 · Features<br/>MFCC + log-mel<br/>(Librosa)"]
-    B --> D["4 · Wav2Vec2<br/>speech embeddings"]
-    C --> E["5 · LCNN classifier<br/>(Max-Feature-Map)"]
+    A["Audio<br/>upload / mic / sample"] --> B["Preprocess<br/>16 kHz mono, trim silence,<br/>normalise, 4 s segments"]
+    B --> C["Wav2Vec2 (frozen)<br/>layer 6, 768 / 20 ms"]
+    B --> D["Log-mel + MFCC<br/>100 / 20 ms"]
+    C --> E["LCNN<br/>Max-Feature-Map"]
     D --> E
-    E --> F["6 · Prediction<br/>probability → confidence %"]
-    F --> G["7 · Verdict + confidence<br/>(React)"]
+    E --> F["Calibrated P(AI)<br/>mean over segments"]
 ```
 
-Steps 1 and 7 run in the React web page. Steps 2–6 run in the FastAPI backend (Python, PyTorch).
+- **Pretrained model, adapted lightly:** Wav2Vec2 (`facebook/wav2vec2-base`, trained on 960 h
+  of speech) is used frozen as a feature extractor. Only the small LCNN is trained, which
+  is what makes CPU training feasible. Fine-tuning Wav2Vec2 itself needs a GPU.
+- **Calibrated decision:** the cut-off is chosen on the **dev** set at the equal-error point
+  (each language weighted equally). Scores are re-mapped so that cut-off reads as 50%.
+  The test set is never used to choose anything.
 
-- **Wav2Vec2**: a speech model pre-trained on unlabelled audio. It turns the waveform into
-  768 numbers per 20 ms frame. Layer 6 of `facebook/wav2vec2-base` is used.
-- **Spectral features**: 80 log-mel and 20 MFCC values per frame from Librosa, aligned to the
-  same 20 ms frames.
-- **LCNN**: the classic ASVspoof countermeasure network. It reads the combined
-  (time × features) map and outputs two probabilities: bona-fide and spoof.
-- Long clips are split into 4 s segments, and their spoof probabilities are averaged.
+## Data, cleaning and training
+
+| Source | Role | Licence | Access |
+|---|---|---|---|
+| [ASVspoof 2019 LA](https://datashare.ed.ac.uk/handle/10283/3336) | English, real + AI (attacks A01–A19) | ODC-By 1.0 | open; balanced subset fetched via HTTP range requests |
+| [Kathbath](https://huggingface.co/datasets/ai4bharat/Kathbath) (AI4Bharat) | Indian languages, **real** speech | CC BY 4.0 | gated: accept terms + `hf auth login` |
+| [IndicSynth](https://huggingface.co/datasets/vdivyasharma/IndicSynth) | Indian languages, **AI** speech (XTTS-v2, FreeVC) | CC BY-NC 4.0 | open |
+
+Only samples are downloaded, never the full datasets (7 GB to 845 GB). `prepare_dataset.py`
+then applies the same rules to every language:
+- removes exact duplicates (SHA-1), unreadable files, and clips shorter than 1 s or longer than 60 s
+- checks that **no speaker appears in two splits** (no train/test leakage)
+- balances real vs AI within every language and split
+- only keeps a language if it has real **and** AI clips in train, dev and test
+
+The result is `data/manifest.csv` plus `data/dataset_report.json`, which records every
+removal reason. During training the loss is weighted so each (language, label) group counts
+equally, so English, the largest language, cannot dominate.
+
+**Reproduce everything** (downloads skip what is already on disk):
+
+```powershell
+cd backend
+.venv\Scripts\python run_pipeline.py              # download -> clean -> train -> evaluate -> RESULTS.md
+.venv\Scripts\python run_pipeline.py --skip-download
+```
+
+Individual steps: `fetch_asvspoof_subset.py`, `fetch_indic_subset.py --kind fake|real`,
+`prepare_dataset.py`, `train.py` (`--proj-dim 128 --time-pool 1` for the original, slower
+architecture), `evaluate.py` (re-score a checkpoint and calibrate its threshold),
+`make_results_md.py`, and `data_size_study.py` (learning curve: how many clips are needed).
+
+## Evaluation
+
+Each language is evaluated separately on its own speaker-disjoint test set, with:
+- **EER** (threshold-independent, with a 95% bootstrap CI)
+- **accuracy**, **real-voice pass rate** and **AI catch rate** at the calibrated threshold, each with a 95% Wilson CI
+- **sample and speaker counts**
+- a breakdown by attack or generator
+
+The English test set uses 13 voice generators (A07–A19) **never seen in training**.
+
+Support status rule:
+- **supported**: the upper 95% bound of test EER is ≤ 10%
+- **experimental**: test EER ≤ 25%
+- **not supported**: anything worse, or not evaluated
+
+## Tests
+
+```powershell
+cd backend
+.venv\Scripts\python -m pytest -q
+```
+
+The tests cover preprocessing (silence, too short, resampling, segmenting), corrupted files,
+model shapes, manifest integrity (speaker-disjoint, balanced, no duplicates), and every API
+status code (415, 400 empty/silent/corrupt, 200), plus known samples and the report schema.
+
+## API
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/api/health` | model status and headline metrics |
+| GET | `/api/report` | full evaluation report (per-language metrics, dataset, training) |
+| GET | `/api/data-size-study` | learning-curve results |
+| POST | `/api/predict` | multipart `file` (WAV/FLAC/MP3/OGG/M4A, ≤ 20 MB) → verdict, confidence, probabilities, per-segment scores |
+
+Errors return `{"detail": "..."}`:
+- **400:** empty, corrupt, silent, or under 0.5 s of speech
+- **413:** file larger than 20 MB
+- **415:** unsupported file type
+- **503:** no trained model. The API never guesses.
+
+## Limitations
+
+- **Languages:** the shipped model is evaluated on **English only**. Indian languages are
+  built into the pipeline, but they are waiting for the Kathbath real-speech download, which
+  needs a Hugging Face login. Without real speech they are excluded, not claimed.
+- **Unseen generators:** they are the weak spot. Some ASVspoof attacks (for example A10)
+  are mostly missed (see the per-attack table).
+- **Recording conditions:** live microphone audio, phone calls, noise and music differ from the
+  training data, so treat those results with extra caution.
+- **A prediction, not proof:** the confidence is a calibrated model score, not a probability of fraud.
 
 ## Project structure
 
 ```
-backend/
-  app/
-    config.py        shared preprocessing, upload, and CORS settings
-    preprocess.py    load, resample, trim, normalise, segment, invalid-audio checks
-    features.py      Wav2Vec2 embeddings + MFCC/log-mel
-    model.py         LCNN classifier
-    inference.py     full pipeline for one file
-    main.py          FastAPI app: GET /api/health, POST /api/predict
-  checkpoints/fakeaudio_lcnn.pt   trained English model (1.3 MB)
-  train.py                   trains the LCNN and reports EER (overall and per language)
-  evaluate.py                scores the saved model on the test split
-  fetch_asvspoof_subset.py   downloads a balanced ASVspoof 2019 LA subset
-  fetch_indic_subset.py      downloads Kathbath (real) + IndicSynth (fake) samples
-  requirements.txt
-frontend/                    React (Vite) website
-  src/components/Checker.jsx       main card: Record / Upload / Try a sample → listen → check → result
-  src/components/Recorder.jsx      microphone recording with live level meter (max 60 s)
-  src/components/AudioReview.jsx   waveform + play/pause + seek for the chosen audio
-  src/components/Info.jsx          recent checks, how it works, accuracy (live), good to know
-  src/lib/audio.js                 raw mic capture (AudioWorklet) → 16-bit WAV, waveform peaks
-  src/api.js                       calls to /api/health and /api/predict
-  public/samples/                  5 ASVspoof 2019 eval clips for "Try a sample" (ODC-By)
-start-backend.bat, start-frontend.bat   double-click launchers
-DEMO.md                      demo script and plain-language explanation
-PROGRESS.md                  progress notes and how to resume the multilingual work
+backend/   app/ (FastAPI: config, preprocess, features, model, inference, main)
+           fetch_*.py, prepare_dataset.py, train.py, evaluate.py, run_pipeline.py,
+           data_size_study.py, make_results_md.py, tests/, checkpoints/
+frontend/  React + Vite: pages/Home.jsx, pages/Results.jsx, components/ (Checker,
+           Recorder, AudioReview, charts, Info), lib/audio.js (raw mic -> WAV)
+data/      downloaded audio, feature cache, manifest.csv, dataset_report.json (not in git)
 ```
-
-## Setup (Windows)
-
-Requirements: Python 3.11+, Node.js 18+, and `ffmpeg` on PATH (needed for M4A files).
-
-Create the backend environment:
-
-```powershell
-cd backend
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-Install the frontend dependencies:
-
-```powershell
-cd frontend
-npm install
-```
-
-## Train the model
-
-An English-only checkpoint is included (see [Measured results](#measured-results)), so
-training is only needed to reproduce it or to add the Indian languages. The pipeline
-supports English ASVspoof 2019 LA data and optional Indian-language Kathbath real speech
-plus IndicSynth generated speech.
-
-Download the English subset:
-
-```powershell
-cd backend
-.venv\Scripts\Activate.ps1
-python fetch_asvspoof_subset.py --out ..\data\LA
-```
-
-For the Indian-language real-speech download, accept the Kathbath dataset terms on Hugging
-Face and authenticate with `hf auth login`. Then run the downloads as needed:
-
-```powershell
-python fetch_indic_subset.py --out ..\data\indic --kind fake
-python fetch_indic_subset.py --out ..\data\indic --kind real
-```
-
-Both downloaders resume through their manifests. Train using both roots:
-
-```powershell
-python train.py --asvspoof-root ..\data\LA --indic-root ..\data\indic
-```
-
-`train.py` caches Wav2Vec2 and spectral features under `data/cache`, selects the best epoch
-on the dev split, reports EER and accuracy, and writes
-`backend/checkpoints/fakeaudio_lcnn.pt`. A missing data source is skipped by the training
-script.
-
-Useful options: `--languages English` trains on a subset of languages, and `--extract-only`
-caches features without training (for example while downloads are still running). The
-best model is saved after every improving epoch, so training can be stopped early. In
-that case, run `python evaluate.py` to measure the saved model on the test split.
-
-## Run
-
-Terminal 1 (backend):
-
-```powershell
-cd backend
-.venv\Scripts\Activate.ps1
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Terminal 2 (frontend):
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Open http://localhost:5173. The Vite development server forwards `/api` requests to the
-FastAPI server on port 8000.
-
-For a frontend hosted on another origin, set a comma-separated list before starting the
-backend:
-
-```powershell
-$env:FAKEAUDIO_CORS_ORIGINS = "http://localhost:5173,https://example.com"
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-## API
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/health` | Whether the model is loaded, plus its measured dev/test EER |
-| POST | `/api/predict` | Multipart field `file` (WAV, FLAC, MP3, OGG or M4A, ≤ 20 MB) |
-
-Example response:
-
-```json
-{
-  "label": "spoof",
-  "verdict": "AI-generated / Spoof",
-  "confidence": 0.94,
-  "probabilities": { "bonafide": 0.06, "spoof": 0.94 },
-  "segments": [{ "start": 0.0, "end": 3.1, "spoof_probability": 0.94 }],
-  "audio": { "filename": "clip.wav", "original_sample_rate": 44100,
-             "original_duration_sec": 3.6, "analysed_duration_sec": 3.1,
-             "processed_sample_rate": 16000 },
-  "processing_time_ms": 850
-}
-```
-
-Errors return `{"detail": "<message>"}` and the web page shows that message:
-
-| Code | When |
-|---|---|
-| 400 | Empty, corrupted or unreadable file; silent audio; less than 0.5 s of speech |
-| 413 | File larger than 20 MB |
-| 415 | Unsupported file type |
-| 503 | No trained model found. The API never returns a guessed result. |
-
-## Datasets
-
-| Dataset | Use | Status |
-|---|---|---|
-| ASVspoof 2019 LA | English training, dev and eval | Balanced subset downloader included |
-| Kathbath | Indian-language bona-fide speech | Requires Hugging Face access; downloader included |
-| IndicSynth | Indian-language generated speech | Downloader included. The Hugging Face release contains only XTTS-v2 and FreeVC clips (no VITS, although the dataset card lists it). |
-| ASVspoof 2021 DF, WaveFake, in-the-wild audio | External testing | Planned |
-
-## Measured results
-
-English-only model (`backend/checkpoints/fakeaudio_lcnn.pt`), trained on 2,500 ASVspoof
-2019 LA clips (1,250 real + 1,250 fake, attacks A01–A06). Training was stopped after
-epoch 3 (about 9–20 minutes per epoch on this CPU). The epoch was chosen on the dev set;
-the test set was used once, afterwards.
-
-| Split | Clips | EER | Accuracy at 0.5 | Real passed | Fake caught |
-|---|---|---|---|---|---|
-| Dev (attacks A01–A06, seen) | 800 | 2.00% | 95.0% | 396 / 400 | 364 / 400 |
-| **Test (attacks A07–A19, never seen)** | 800 | **8.25%** | 81.4% | 399 / 400 | 252 / 400 |
-
-Fake detection on the test set by attack type, at the 0.5 threshold:
-
-| Attack | A07 | A08 | A09 | A10 | A11 | A12 | A13 | A14 | A15 | A16 | A17 | A18 | A19 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Caught | 39% | 90% | 84% | 16% | 45% | 65% | 100% | 48% | 45% | 65% | 93% | 70% | 60% |
-
-**How to read this:** the model almost never calls real speech fake (399/400), but at
-the default 0.5 threshold it misses about a third of the fakes made by generators it has
-never seen. Some systems are caught almost always (A13, A17), others rarely (A10, a
-Tacotron 2 + WaveRNN voice). The low EER shows the scores separate real from fake well;
-the threshold is not yet calibrated for unseen attacks.
-
-## Current status and limitations
-
-The included checkpoint is **English-only**. The Indian-language pipeline is built, but
-it is not trained yet: 1,313 of 2,100 IndicSynth fake clips are downloaded (Hindi, Kannada,
-Tamil and Telugu complete, Malayalam 113/300), and the Kathbath real speech still needs Hugging Face access (see `PROGRESS.md`).
-Without a checkpoint the API still starts, reports the state at `/api/health`, and returns
-HTTP 503 instead of guessing.
-
-- **Wav2Vec2 is frozen, not fine-tuned.** Only the LCNN is trained to keep CPU training
-  practical.
-- **Subset training.** 2,500 training clips and 3 epochs. The numbers above are measured,
-  not targets; per-language numbers are recorded once the Indian languages are trained.
-- Accuracy can fall for unseen voice-cloning systems, languages, codecs, noise, music, or
-  telephone recordings.
-- A confidence score is not a calibrated probability of fraud.
-- Dataset licences and access terms must be checked before redistributing audio or models.
-
-## Suggested improvements
-
-1. Finish the multilingual downloads and record measured per-language EER and accuracy.
-2. Add automated backend tests for audio validation, segmentation, checkpoint mismatch, and
-   API status codes.
-3. Add frontend tests for file validation, keyboard upload, loading states, and errors.
-4. Calibrate the decision threshold on a held-out validation set instead of assuming `0.5`.
-5. Add request IDs, structured logs, and a bounded worker queue before public deployment.
-6. Evaluate on ASVspoof 2021 DF, WaveFake, and in-the-wild recordings.
-7. Consider XLS-R or IndicWav2Vec after measuring the baseline; larger encoders increase CPU
-   and memory requirements.
-
-## Next project plan
-
-The next milestone is to produce a measured multilingual baseline that teammates can run
-from a clean checkout. Work through the phases in order so model quality is measured before
-adding larger models or deployment complexity.
-
-### Phase 1: Finish the data pipeline
-
-- Accept the Kathbath terms and complete the real-speech download.
-- Finish the IndicSynth download and confirm every requested language has a manifest entry.
-- Check that train, dev, and test speakers do not overlap for Indian-language data.
-- Keep downloaded audio and feature caches under `data/`; do not commit them.
-
-### Phase 2: Train and record a baseline
-
-```powershell
-cd backend
-.venv\Scripts\Activate.ps1
-python train.py --asvspoof-root ..\data\LA --indic-root ..\data\indic
-```
-
-Record the following from the training output and checkpoint metadata:
-
-- overall dev and test EER and accuracy;
-- per-language EER and accuracy;
-- number of clips, speakers, and generators in every split;
-- training settings, runtime, and the checkpoint date.
-
-The phase is complete when `backend/checkpoints/fakeaudio_lcnn.pt` exists and the API
-reports `model_loaded: true` from `/api/health`.
-
-### Phase 3: Validate the application
-
-- Run the frontend and backend together with at least one real and one generated clip per
-  available language.
-- Test empty, silent, corrupt, unsupported, oversized, and very short uploads.
-- Confirm that long recordings are capped at 60 seconds and that segment probabilities are
-  displayed correctly.
-- Add automated backend tests for preprocessing, checkpoint mismatch, and API status codes.
-- Add frontend tests for file validation, keyboard upload, loading states, and errors.
-
-### Phase 4: Improve reliability and generalisation
-
-- Calibrate the decision threshold on a held-out validation set instead of assuming `0.5`.
-- Add request IDs, structured logs, and a bounded inference queue before public deployment.
-- Evaluate on ASVspoof 2021 DF, WaveFake, and in-the-wild recordings.
-- Compare the measured baseline with XLS-R or IndicWav2Vec only if multilingual results
-  justify the extra CPU and memory cost.
-
-### Definition of release readiness
-
-The project is ready for a supervised demonstration when a fresh setup can install the
-dependencies, load the checkpoint, pass the validation cases above, show measured metrics
-for each supported language, and clearly label every result as a prediction rather than proof
-of authenticity.
 
 ## Team
 
