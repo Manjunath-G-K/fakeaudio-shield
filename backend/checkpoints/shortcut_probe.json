@@ -1,0 +1,36 @@
+{
+  "cap": 0.1,
+  "method": "python shortcut_probe.py",
+  "results": {
+    "English": {
+      "channel_eer": 0.4367,
+      "test_clips": 600,
+      "shortcut_risk": false
+    },
+    "Hindi": {
+      "channel_eer": 0.24,
+      "test_clips": 100,
+      "shortcut_risk": false
+    },
+    "Kannada": {
+      "channel_eer": 0.1333,
+      "test_clips": 60,
+      "shortcut_risk": false
+    },
+    "Malayalam": {
+      "channel_eer": 0.1538,
+      "test_clips": 104,
+      "shortcut_risk": false
+    },
+    "Tamil": {
+      "channel_eer": 0.1585,
+      "test_clips": 82,
+      "shortcut_risk": false
+    },
+    "Telugu": {
+      "channel_eer": 0.125,
+      "test_clips": 32,
+      "shortcut_risk": false
+    }
+  }
+}
