@@ -1,71 +1,55 @@
 import { useCallback, useEffect, useState } from "react";
 import { getHealth } from "./api.js";
-import Instrument from "./components/Instrument.jsx";
-import { DataPrivacy, Limits, Measurements, Pipeline } from "./components/Sheet.jsx";
-
-function Status({ health }) {
-  const state = health === null ? "wait" : health.model_loaded ? "on" : "off";
-  const text = { wait: "Connecting", on: "Model online", off: "Model offline" }[state];
-  return (
-    <span className={`status ${state}`} role="status" aria-live="polite" title={health?.error || health?.message || ""}>
-      <i aria-hidden="true" />{text}
-    </span>
-  );
-}
+import Checker from "./components/Checker.jsx";
+import { Shield } from "./components/icons.jsx";
+import { Accuracy, GoodToKnow, HowItWorks, Recent } from "./components/Info.jsx";
 
 export default function App() {
   const [health, setHealth] = useState(null);
+  const [history, setHistory] = useState([]);
   const refresh = useCallback(() => getHealth().then(setHealth), []);
   useEffect(() => { refresh(); }, [refresh]);
-  const test = health?.metrics?.test;
+
+  const ready = !!health?.model_loaded;
+  const status = health === null ? "Connecting…" : ready ? "Ready" : "Offline";
 
   return (
     <>
-      <a className="skip" href="#instrument">Skip to the detector</a>
-      <header className="bar">
-        <a className="mark" href="#top" aria-label="FakeAudio Shield, top of page">FAKEAUDIO<span>/</span>SHIELD</a>
+      <header className="nav">
+        <a href="#top" className="logo"><span className="logo-mark"><Shield size={18} /></span>FakeAudio Shield</a>
         <nav aria-label="Sections">
-          <a href="#instrument">Detector</a>
-          <a href="#pipeline">Signal chain</a>
-          <a href="#measurements">Measurements</a>
-          <a href="#limits">Limits</a>
-          <a href="#data">Data</a>
+          <a href="#how">How it works</a>
+          <a href="#accuracy">Accuracy</a>
+          <a href="#good-to-know">Good to know</a>
         </nav>
-        <div className="bar-right">
-          <span className="bar-model hide-sm">W2V2-B/L6 · LCNN</span>
-          <Status health={health} />
-        </div>
+        <span className={`status ${health === null ? "" : ready ? "ok" : "off"}`} role="status" aria-live="polite"
+              title={health?.error || (!ready && health?.message) || ""}>
+          <i aria-hidden="true" />{status}
+        </span>
       </header>
 
       <main id="top">
-        <div className="intro">
-          <h1>Is this voice <em>human?</em></h1>
-          <div className="intro-side">
-            <p>
-              Voice cloning needs only a few seconds of someone's speech. Drop in a recording and
-              FakeAudio Shield estimates whether it is genuine or synthetic, and shows you exactly
-              what it measured.
-            </p>
-            <div className="intro-figure">
-              <b>{test ? `${(test.eer * 100).toFixed(2)} %` : "—"}</b>
-              <span>equal error rate on 13 voice generators the model never saw in training</span>
-            </div>
-          </div>
-        </div>
+        <section className="hero">
+          <h1>Is this voice real, or AI?</h1>
+          <p>Record your voice, upload a clip or try a sample. FakeAudio Shield tells you whether it sounds like a real person or a machine, in about a second.</p>
+        </section>
 
-        <Instrument health={health} onBackendError={refresh} />
+        {health && !ready && (
+          <p className="banner" role="alert">
+            The detector isn't running. Start the backend (<code>start-backend.bat</code>) and refresh this page.
+          </p>
+        )}
 
-        <div className="sheet">
-          <Pipeline />
-          <Measurements health={health} />
-          <Limits />
-          <DataPrivacy />
-        </div>
+        <Checker ready={ready} onHistory={(h) => setHistory((x) => [h, ...x].slice(0, 6))} />
+        <Recent items={history} />
+
+        <HowItWorks />
+        <Accuracy health={health} />
+        <GoodToKnow />
       </main>
 
-      <footer className="foot">
-        <span>FAKEAUDIO/SHIELD · research prototype · results are predictions, not proof</span>
-        <span className="hide-sm">Keys <kbd>1</kbd>–<kbd>5</kbd> samples · <kbd>U</kbd> upload · <kbd>P</kbd> play</span>
+      <footer className="footer">
+        FakeAudio Shield · results are predictions, not proof · sample clips from ASVspoof 2019 (ODC-By)
       </footer>
     </>
   );
