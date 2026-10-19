@@ -2,7 +2,7 @@
 
 Light CNN (LCNN) with Max-Feature-Map (MFM) activations, the classic ASVspoof
 countermeasure architecture. Input: per-frame Wav2Vec2 embeddings (projected to
-128 values) concatenated with the 100 Librosa spectral values, treated as a
+64 values) concatenated with the 100 Librosa spectral values, treated as a
 (time x features) image. Output: two logits, [bona-fide, spoof].
 """
 import torch
@@ -28,8 +28,15 @@ def conv_mfm(c_in: int, c_out: int, k: int) -> list[nn.Module]:
 
 
 class FakeAudioLCNN(nn.Module):
-    def __init__(self, w2v_dim: int = config.W2V_DIM, spec_dim: int = config.SPEC_DIM, proj_dim: int = 128):
+    """proj_dim: size the 768-d Wav2Vec2 frames are projected to.
+    time_pool: average this many consecutive 20 ms frames before the CNN (2 -> 40 ms frames).
+    Both shrink the input image and make CPU training several times faster."""
+
+    def __init__(self, w2v_dim: int = config.W2V_DIM, spec_dim: int = config.SPEC_DIM,
+                 proj_dim: int = 64, time_pool: int = 2):
         super().__init__()
+        self.arch = {"proj_dim": proj_dim, "time_pool": time_pool}
+        self.time_pool = time_pool
         self.w2v_proj = nn.Sequential(nn.LayerNorm(w2v_dim), nn.Linear(w2v_dim, proj_dim))
         self.lcnn = nn.Sequential(
             *conv_mfm(1, 32, 5), nn.MaxPool2d(2),
@@ -52,7 +59,9 @@ class FakeAudioLCNN(nn.Module):
 
     def forward(self, w2v: torch.Tensor, spec: torch.Tensor) -> torch.Tensor:
         """w2v: (B, T, 768), spec: (B, T, 100) -> logits (B, 2)."""
-        x = torch.cat([self.w2v_proj(w2v), spec], dim=-1).unsqueeze(1)  # (B, 1, T, 228)
-        x = self.lcnn(x)                  # (B, 32, T/16, 228/16)
-        x = x.mean(dim=2).flatten(1)      # average over time -> (B, 32 * 14)
+        x = torch.cat([self.w2v_proj(w2v), spec], dim=-1).unsqueeze(1)  # (B, 1, T, proj+100)
+        if self.time_pool > 1:
+            x = nn.functional.avg_pool2d(x, (self.time_pool, 1))
+        x = self.lcnn(x)                  # (B, 32, T/16, F/16)
+        x = x.mean(dim=2).flatten(1)      # average over time -> (B, 32 * F/16)
         return self.classifier(x)
