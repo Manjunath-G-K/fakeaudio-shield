@@ -1,0 +1,6 @@
+# Training, data download, evaluation and tests (on top of the API runtime).
+-r requirements.txt
+scikit-learn==1.9.1   # EER / ROC metrics, recording-condition probe
+pyarrow==26.0.0       # Kathbath parquet downloader
+pytest==9.1.1
+httpx==0.28.1         # FastAPI TestClient
