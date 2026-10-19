@@ -2,16 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { ALLOWED, MAX_MB, predict } from "../api.js";
 import AudioReview from "./AudioReview.jsx";
 import Recorder from "./Recorder.jsx";
-import { Alert, Check, Cross, Download, Mic, Person, Redo, Robot, Sparkle, Upload } from "./icons.jsx";
+import { ALL_LANGUAGES, NATIVE, SAMPLES } from "../samples.js";
+import { Alert, Check, Cross, Download, Globe, Mic, Person, Redo, Robot, Sparkle, Upload } from "./icons.jsx";
 
-// Clips from the ASVspoof 2019 evaluation set. The model never heard them during training.
-const SAMPLES = [
-  { file: "real-voice-1.flac", name: "Real person (1)", detail: "Recorded human speech", truth: "bonafide" },
-  { file: "real-voice-2.flac", name: "Real person (2)", detail: "Recorded human speech", truth: "bonafide" },
-  { file: "ai-voice-a17.flac", name: "AI voice: voice conversion", detail: "A real voice converted into someone else's", truth: "spoof" },
-  { file: "ai-voice-a13.flac", name: "AI voice: text-to-speech + conversion", detail: "Synthesised, then converted", truth: "spoof" },
-  { file: "ai-voice-a10.flac", name: "AI voice: neural text-to-speech", detail: "A hard case the model often misses", truth: "spoof" },
-];
+/** What we actually measured for this language, in one plain sentence. */
+function languageNote(lang, report) {
+  if (!lang) return null;
+  const L = report?.languages?.[lang];
+  if (!L) {
+    const why = report?.dataset?.excluded_languages?.[lang];
+    return { tone: "warn", text: `${lang} has not been evaluated yet${why ? " (training data incomplete)" : ""}, so this result is unverified for ${lang} speech.` };
+  }
+  const t = L.test;
+  const acc = Math.round(t.accuracy * 100);
+  const n = t.bonafide_total + t.spoof_total;
+  const tone = L.status === "supported" ? "good" : "warn";
+  return { tone, text: `For ${lang}, the model classified ${acc}% of ${n} unseen test clips correctly (EER ${(t.eer * 100).toFixed(1)}%). Status: ${L.status}.` };
+}
 
 const TABS = [
   { id: "record", label: "Record", icon: Mic },
@@ -40,8 +47,9 @@ function Checking() {
   );
 }
 
-function Result({ result, source, onAgain }) {
+function Result({ result, source, onAgain, lang, report }) {
   const ai = result.label === "spoof";
+  const langInfo = languageNote(lang, report);
   const correct = source.sample ? source.sample.truth === result.label : null;
   const dots = Math.min(10, Math.max(1, Math.round(result.confidence * 10)));
 
@@ -83,6 +91,9 @@ function Result({ result, source, onAgain }) {
       {source.kind === "recording" && (
         <p className="note info"><Alert size={16} /> <span>Live microphone recordings are less reliable: the model learned from studio-quality audio, so room noise and laptop mics can affect the result.</span></p>
       )}
+      {langInfo && (
+        <p className={`note ${langInfo.tone === "good" ? "good" : "info"}`}><Globe size={16} /> <span>{langInfo.text}</span></p>
+      )}
 
       <details className="tech">
         <summary>Technical details</summary>
@@ -106,8 +117,10 @@ function Result({ result, source, onAgain }) {
   );
 }
 
-export default function Checker({ ready, onHistory }) {
-  const [tab, setTab] = useState("record");
+export default function Checker({ ready, onHistory, report, lang, setLang }) {
+  const [tab, setTab] = useState("samples");
+  const sampleLangs = Object.keys(SAMPLES);
+  const sampleLang = SAMPLES[lang] ? lang : sampleLangs[0];
   const [source, setSource] = useState(null);     // { file, kind, sample? }
   const [phase, setPhase] = useState("pick");      // pick | review | checking | result
   const [result, setResult] = useState(null);
@@ -139,7 +152,7 @@ export default function Checker({ ready, onHistory }) {
       setResult(r);
       setPhase("result");
       onHistory({ name: source.sample?.name ?? source.file.name, kind: source.kind, label: r.label,
-                  confidence: r.confidence, truth: source.sample?.truth ?? null });
+                  confidence: r.confidence, truth: source.sample?.truth ?? null, lang });
     } catch (e) {
       setError(e.message);
       setPhase("review");
@@ -152,6 +165,15 @@ export default function Checker({ ready, onHistory }) {
 
   return (
     <div className="checker" id="check">
+      <div className="lang-bar">
+        <label htmlFor="lang-select"><Globe size={16} /> Language of the audio</label>
+        <select id="lang-select" value={lang} onChange={(e) => setLang(e.target.value)} disabled={phase === "checking"}>
+          {ALL_LANGUAGES.map((l) => {
+            const st = report?.languages?.[l]?.status;
+            return <option key={l} value={l}>{l}{NATIVE[l] !== l ? ` · ${NATIVE[l]}` : ""}{st ? ` (${st})` : " (not evaluated)"}</option>;
+          })}
+        </select>
+      </div>
       {phase === "pick" && (
         <>
           <div className="tabs" role="tablist" aria-label="Choose how to add audio">
@@ -185,7 +207,10 @@ export default function Checker({ ready, onHistory }) {
 
             {tab === "samples" && (
               <ul className="sample-list">
-                {SAMPLES.map((s) => (
+                {!SAMPLES[lang] && (
+                  <li className="sample-credit">No {lang} samples yet. Showing {sampleLang} clips instead.</li>
+                )}
+                {SAMPLES[sampleLang].map((s) => (
                   <li key={s.file}>
                     <button type="button" onClick={() => pickSample(s)}>
                       <span className={`sample-badge ${s.truth === "spoof" ? "ai" : "real"}`}>
@@ -196,7 +221,7 @@ export default function Checker({ ready, onHistory }) {
                     </button>
                   </li>
                 ))}
-                <li className="sample-credit">Clips from the ASVspoof 2019 evaluation set. The model never heard them during training.</li>
+                <li className="sample-credit">All samples come from test sets: the model never heard them during training.</li>
               </ul>
             )}
           </div>
@@ -218,7 +243,7 @@ export default function Checker({ ready, onHistory }) {
             </div>
           )}
           {phase === "checking" && <Checking />}
-          {phase === "result" && result && <Result result={result} source={source} onAgain={reset} />}
+          {phase === "result" && result && <Result result={result} source={source} onAgain={reset} lang={lang} report={report} />}
         </div>
       )}
 

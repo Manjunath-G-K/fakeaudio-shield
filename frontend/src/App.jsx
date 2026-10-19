@@ -1,55 +1,61 @@
 import { useCallback, useEffect, useState } from "react";
-import { getHealth } from "./api.js";
-import Checker from "./components/Checker.jsx";
+import { getHealth, getReport } from "./api.js";
 import { Shield } from "./components/icons.jsx";
-import { Accuracy, GoodToKnow, HowItWorks, Recent } from "./components/Info.jsx";
+import { useRoute } from "./hooks.js";
+import Home from "./pages/Home.jsx";
+import Results from "./pages/Results.jsx";
 
 export default function App() {
+  const route = useRoute();
   const [health, setHealth] = useState(null);
+  const [report, setReport] = useState(null);
   const [history, setHistory] = useState([]);
-  const refresh = useCallback(() => getHealth().then(setHealth), []);
-  useEffect(() => { refresh(); }, [refresh]);
+  const [lang, setLang] = useState("English");
+
+  const load = useCallback(async () => {
+    setReport(null);
+    const h = await getHealth();
+    setHealth(h);
+    setReport(h.model_loaded ? await getReport() : { error: h.error || h.message || "The detector is offline." });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [route]);
 
   const ready = !!health?.model_loaded;
   const status = health === null ? "Connecting…" : ready ? "Ready" : "Offline";
 
   return (
     <>
+      <a className="skip" href="#main">Skip to content</a>
       <header className="nav">
-        <a href="#top" className="logo"><span className="logo-mark"><Shield size={18} /></span>FakeAudio Shield</a>
-        <nav aria-label="Sections">
-          <a href="#how">How it works</a>
-          <a href="#accuracy">Accuracy</a>
-          <a href="#good-to-know">Good to know</a>
+        <a href="#/" className="logo" aria-label="FakeAudio Shield home"><span className="logo-mark"><Shield size={18} /></span><span className="logo-text">FakeAudio Shield</span></a>
+        <nav aria-label="Pages">
+          <a href="#/" className={route === "home" ? "on" : ""}>Try it</a>
+          <a href="#/results" className={route === "results" ? "on" : ""}>Results</a>
         </nav>
         <span className={`status ${health === null ? "" : ready ? "ok" : "off"}`} role="status" aria-live="polite"
               title={health?.error || (!ready && health?.message) || ""}>
-          <i aria-hidden="true" />{status}
+          <i aria-hidden="true" /><span className="status-text">{status}</span>
         </span>
       </header>
 
-      <main id="top">
-        <section className="hero">
-          <h1>Is this voice real, or AI?</h1>
-          <p>Record your voice, upload a clip or try a sample. FakeAudio Shield tells you whether it sounds like a real person or a machine, in about a second.</p>
-        </section>
+      {health && !ready && (
+        <p className="banner" role="alert">
+          The detector isn't running. Start the backend (<code>start-backend.bat</code>), then
+          <button type="button" onClick={load}>retry</button>.
+        </p>
+      )}
 
-        {health && !ready && (
-          <p className="banner" role="alert">
-            The detector isn't running. Start the backend (<code>start-backend.bat</code>) and refresh this page.
-          </p>
-        )}
-
-        <Checker ready={ready} onHistory={(h) => setHistory((x) => [h, ...x].slice(0, 6))} />
-        <Recent items={history} />
-
-        <HowItWorks />
-        <Accuracy health={health} />
-        <GoodToKnow />
+      <main id="main" key={route} className="page">
+        {route === "results"
+          ? <Results report={report} reload={load} />
+          : <Home health={health} report={report && !report.error ? report : null} lang={lang} setLang={setLang}
+                  history={history} onHistory={(h) => setHistory((x) => [h, ...x].slice(0, 6))} />}
       </main>
 
       <footer className="footer">
-        FakeAudio Shield · results are predictions, not proof · sample clips from ASVspoof 2019 (ODC-By)
+        <span>FakeAudio Shield · results are predictions, not proof</span>
+        <span>Sample clips: ASVspoof 2019 LA (ODC-By) · all sources and licences on the <a href="#/results">Results</a> page</span>
       </footer>
     </>
   );
