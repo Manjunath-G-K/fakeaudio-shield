@@ -144,6 +144,7 @@ def test_known_samples_are_classified(client, name, truth):
     assert body["label"] == truth
     assert abs(body["probabilities"]["bonafide"] + body["probabilities"]["spoof"] - 1) < 1e-5
     assert 0.5 <= body["confidence"] <= 1
+    assert 0 <= body["audio"]["speech_start_sec"] < body["audio"]["original_duration_sec"]
 
 
 @needs_model

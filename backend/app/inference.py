@@ -10,7 +10,7 @@ import torch
 from . import config
 from .features import Wav2Vec2Embedder, extract
 from .model import FakeAudioLCNN
-from .preprocess import load_audio, preprocess, segment
+from .preprocess import load_audio, preprocess_with_offset, segment
 
 log = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class Detector:
 
         y, orig_sr = load_audio(path)              # AudioError if invalid
         original_duration = len(y) / orig_sr
-        clean = preprocess(y, orig_sr)
+        clean, speech_start = preprocess_with_offset(y, orig_sr)
         segs = segment(clean)
 
         with self._lock:
@@ -167,6 +167,8 @@ class Detector:
                 "original_sample_rate": orig_sr,
                 "original_duration_sec": round(original_duration, 2),
                 "analysed_duration_sec": round(len(clean) / config.SAMPLE_RATE, 2),
+                # segment times count from here: leading silence is trimmed before analysis
+                "speech_start_sec": round(speech_start, 3),
                 "processed_sample_rate": config.SAMPLE_RATE,
             },
             "processing_time_ms": round((time.perf_counter() - t0) * 1000),

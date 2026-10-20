@@ -59,13 +59,19 @@ def load_audio(path: str) -> tuple[np.ndarray, int]:
 
 def preprocess(y: np.ndarray, sr: int) -> np.ndarray:
     """Resample to 16 kHz, trim silence and normalise. Returns the cleaned waveform."""
+    return preprocess_with_offset(y, sr)[0]
+
+
+def preprocess_with_offset(y: np.ndarray, sr: int) -> tuple[np.ndarray, float]:
+    """Like preprocess(), also returning where the kept speech starts in the original audio (seconds),
+    so segment times can be mapped back onto the uploaded file."""
     if sr != config.SAMPLE_RATE:
         y = librosa.resample(y, orig_sr=sr, target_sr=config.SAMPLE_RATE)
 
     if np.max(np.abs(y)) < config.SILENCE_PEAK:
         raise AudioError("The audio is silent - no speech was found.")
 
-    y, _ = librosa.effects.trim(y, top_db=config.TRIM_TOP_DB)
+    y, (start, _) = librosa.effects.trim(y, top_db=config.TRIM_TOP_DB)
 
     if len(y) < config.MIN_SPEECH_SECONDS * config.SAMPLE_RATE:
         raise AudioError(
@@ -74,7 +80,7 @@ def preprocess(y: np.ndarray, sr: int) -> np.ndarray:
 
     max_len = int(config.MAX_ANALYSED_SECONDS * config.SAMPLE_RATE)
     y = y[:max_len]
-    return (y / np.max(np.abs(y)) * 0.95).astype(np.float32)
+    return (y / np.max(np.abs(y)) * 0.95).astype(np.float32), start / config.SAMPLE_RATE
 
 
 def _fit_length(y: np.ndarray, n: int) -> np.ndarray:
