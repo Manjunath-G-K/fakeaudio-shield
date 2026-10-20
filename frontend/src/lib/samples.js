@@ -1,7 +1,7 @@
 // Sample clips served from /public/samples. All are from TEST splits: never heard during training.
 // English: ASVspoof 2019 LA eval (ODC-By). Indian languages: Kathbath (CC BY 4.0) / IndicSynth (CC BY-NC 4.0),
-// exported by backend/export_samples.py into samples.generated.json.
-import generated from "./samples.generated.json";
+// exported by backend/export_samples.py into data/samples.generated.json. Licences: NOTICE.md.
+import generated from "../data/samples.generated.json";
 
 export const SAMPLES = {
   ...generated,
@@ -14,6 +14,7 @@ export const SAMPLES = {
   ],
 };
 
-// Languages with measured results (the backend's /api/health is the source of truth; this is the fallback).
-export const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam"];
-export const NATIVE = { English: "English", Hindi: "हिन्दी", Kannada: "ಕನ್ನಡ", Tamil: "தமிழ்", Telugu: "తెలుగు", Malayalam: "മലയാളം" };
+export async function loadSample(sample) {
+  const blob = await (await fetch(`/samples/${sample.file}`)).blob();
+  return new File([blob], sample.file, { type: blob.type || "audio/wav" });
+}

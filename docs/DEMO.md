@@ -13,36 +13,32 @@ A 6-minute walkthrough for presenting the project. Set-up is in the [README](../
 
 ## Walkthrough
 
-1. **Choose a language** in step 1 of the checker card. The coloured dot shows its measured
-   status (green = supported, amber = experimental). The language also picks the model:
-   English uses the English specialist; the others use the multilingual model.
-2. **Try a sample** (step 2). Every sample is from a test split, so the model never heard it.
-   **Use → ▶ listen → Check this voice.** A good order:
-   - *Hindi → Real person*: **Likely a real human voice**.
-   - *Hindi → AI voice*: **Likely AI-generated**.
-   - *English → AI voice: neural text-to-speech* (attack A10): caught only just, at about
-     50% with low confidence. A10 is the model's known weak spot: on the test set it catches
-     only about a third of A10 clips. Use it to explain that detectors struggle with
-     generators they never trained on.
-
-   All 15 samples are currently classified correctly. Kannada and Telugu real voices are
-   borderline (about 52%) and are shown as low confidence.
-3. **Read the result:** the gauge shows the chance of AI, the timeline shows each 4-second
-   part, the badge shows which model answered, and a note gives the measured accuracy for
-   that language.
-4. **Record:** tap the mic, speak for 5–15 s, stop, listen, check. The result warns that live
-   microphone audio is less reliable. Test the microphone on the demo machine first.
-5. **Upload:** drag in a file. A broken or silent file gets a clear error instead of a guess.
-6. **Language coverage** (scroll down): six languages, each with its accuracy ring, EER,
-   number of test clips and speakers.
-7. **Results page**, top to bottom:
-   - summary numbers and the per-language EER chart with 95% confidence intervals
-   - the table with model, status and recording-condition check per language
-   - per-attack bars (A10 is the weak spot)
-   - *Languages that need more work*, with the reason
-   - the dataset audit, licences, both models and their training
-   - **How much data is enough?** Test EER stops improving after about 1,250 English
-     clips, which is why the project uses a few thousand balanced clips, not 100,000.
+1. **The chat.** Shield greets you and explains what to do. The header shows *online* when the
+   backend is up. On a wide screen the right panel shows how reliable Shield is for the current language.
+2. **Pick a language** with the chip at the bottom left. Shield posts a line with that
+   language's status and accuracy. English uses the English specialist; the others use the
+   multilingual model.
+3. **Send a mystery test clip:** tap the inbox icon, listen to *Mystery clip A/B*, guess, then
+   **Send**. Shield replies with a verdict and only then reveals whether the clip was really
+   real or AI. All test clips are from speakers the model never heard. A good order:
+   - *Hindi → clip B (AI)*: **Sounds AI-generated**, then "Correct: this test clip really is AI-generated".
+   - *English → the neural text-to-speech clip (A10)*: caught only just, at about 50% with low
+     confidence. A10 is the model's known weak spot: on the test set it catches only about a third of A10 clips.
+4. **Read the verdict.**
+   - The meter shows where the clip sits between real and AI.
+   - Each 4-second part has its own score; tap a part to hear it.
+   - **Play the most AI-like part** jumps the voice note to the most suspicious stretch, which turns red on its waveform.
+   - **Share verdict card** creates an image of the result.
+5. **Ask Shield** with the chips: *How accurate are you?* gives the live per-language
+   numbers; *What can't you catch?* gives the honest limits.
+6. **Record:** tap the microphone. A live spectrogram draws while you speak. Tap send. Shield
+   warns that live microphone audio is less reliable. Test the microphone on the demo machine first.
+7. **Upload:** tap the paperclip, or drag a file onto the chat. A broken or silent file gets a
+   clear error message instead of a guess.
+8. **Report** (top right): *How Shield was tested*.
+   - Overall numbers.
+   - Each language with its error rate and 95% interval on a small number line; tap a language for details and per-generator catch rates.
+   - Where Shield struggles, the training data and licences, both models, the learning curve and the method.
 
 **Microphone notes:** the browser asks for permission the first time. The mic only works on
 `localhost` or over HTTPS. Recording captures raw audio with noise suppression and echo

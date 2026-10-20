@@ -1,0 +1,16 @@
+/* App shell: on desktop the chat sits in a window on a soft teal band; on phones it fills the screen. */
+.app-shell { position: relative; min-height: 100dvh; padding: 20px; background: linear-gradient(180deg, var(--teal-100) 0, var(--teal-100) 132px, var(--page) 132px); }
+.app-window { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: minmax(0, 1fr); max-width: 1360px; height: calc(100dvh - 40px); margin: 0 auto; overflow: hidden; border-radius: 18px; background: var(--panel); box-shadow: var(--shadow-app); }
+.scrim { display: none; }
+
+@media (min-width: 1100px) {
+  .info-toggle { display: none; }
+}
+@media (max-width: 1099px) {
+  .app-window { grid-template-columns: minmax(0, 1fr); }
+  .scrim { position: fixed; inset: 0; z-index: 40; display: block; border: 0; background: rgba(31, 43, 45, 0.18); }
+}
+@media (max-width: 760px) {
+  .app-shell { padding: 0; background: var(--page); }
+  .app-window { height: 100dvh; border-radius: 0; box-shadow: none; }
+}

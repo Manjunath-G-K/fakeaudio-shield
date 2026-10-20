@@ -6,7 +6,7 @@ For every language in data/manifest.csv (except English, which has hand-labelled
 samples), one real (Kathbath) and one AI (IndicSynth) clip are taken from the test split.
 Clips are picked by sorted file name, NOT by whether the model gets them right, so the demo
 shows honest behaviour. Writes frontend/public/samples/<lang>-*.{ext} and
-frontend/src/samples.generated.json (read by samples.js).
+frontend/src/data/samples.generated.json (read by src/lib/samples.js).
 """
 import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to cp1252
@@ -42,8 +42,8 @@ def main():
         if entries:
             samples[lang] = entries
             print(f"{lang}: {[e['file'] for e in entries]}")
-    (ROOT / "frontend" / "src" / "samples.generated.json").write_text(json.dumps(samples, indent=2, ensure_ascii=False), encoding="utf-8")
-    print("wrote frontend/src/samples.generated.json")
+    (ROOT / "frontend" / "src" / "data" / "samples.generated.json").write_text(json.dumps(samples, indent=2, ensure_ascii=False), encoding="utf-8")
+    print("wrote frontend/src/data/samples.generated.json")
 
 
 if __name__ == "__main__":

@@ -2,12 +2,12 @@
 
 **Detect AI-generated voices and audio deepfakes, with honest per-language results.**
 
-Record your voice, upload a clip or try a sample. FakeAudio Shield estimates whether the
-speech is a real human voice or AI-generated (voice cloning, text-to-speech, voice
-conversion), shows how confident it is and which part of the clip looks synthetic. It runs
-on an ordinary CPU.
+Voice-clone scams usually arrive as a voice note. So FakeAudio Shield works like a chat: send
+it a voice note (record, attach a file, or send one of its test clips) and it replies with a
+verdict. Is the voice real or AI-generated (voice cloning, text-to-speech, voice conversion)?
+How confident is it, and which part sounds most synthetic? It runs on an ordinary CPU.
 
-![FakeAudio Shield detector page](docs/screenshot.png)
+![FakeAudio Shield chat](docs/screenshot.png)
 
 ## Supported languages and measured accuracy
 
@@ -37,15 +37,18 @@ All languages together: 93.2% accuracy and 6.5% EER on 1,160 unseen test clips.
 
 ## Features
 
-- **Three ways to check a voice:** microphone recording (raw audio, no browser noise
-  suppression), file upload (WAV, FLAC, MP3, OGG, M4A, up to 20 MB), or built-in test samples.
-- **Clear results:** verdict, confidence, a gauge showing the chance of AI, a timeline of every
-  4-second part, and the measured reliability for the chosen language.
-- **Language-aware:** the selected language picks the model (an English specialist, or the
-  multilingual model) and the measured results that apply.
-- **Transparent:** a Results page with per-language metrics, 95% confidence intervals, a
-  recording-condition check, the dataset audit and licences, all read live from the model's
-  evaluation report.
+- **A chat, not a form:** record a voice note (with a live spectrogram while you speak), attach
+  a file (WAV, FLAC, MP3, OGG, M4A, up to 20 MB) or drag it in, or send a "mystery" test clip.
+  Whether a test clip is real or AI is revealed only after Shield answers.
+- **Verdicts you can inspect:** a real-to-AI meter, the score of every 4-second part (tap one to
+  hear it), and **Play the most AI-like part**, which jumps the voice note to the most suspicious stretch.
+- **Shareable verdict card:** one tap creates an image (verdict, confidence, parts, language,
+  model) for the system share sheet, or downloads it.
+- **Language-aware:** the language chip picks the model (an English specialist, or the
+  multilingual model). Shield tells you how reliable it is for that language.
+- **Honest answers:** ask "How accurate are you?" or "What can't you catch?". The answers come
+  from the live evaluation report. The **Report** screen has per-language metrics with 95%
+  confidence intervals, a recording-condition check, the dataset audit and licences.
 - **Lightweight:** a frozen pretrained speech model plus small classifiers (about 0.3 M trainable
   parameters each). No GPU needed for inference or training.
 
@@ -135,12 +138,13 @@ curl -F "file=@clip.wav" -F "language=Hindi" http://localhost:8000/api/predict
   "probabilities": {"bonafide": 0.01, "spoof": 0.99},
   "language": "Hindi", "model": "Multilingual",
   "segments": [{"start": 0.0, "end": 4.0, "spoof_probability": 0.99}],
-  "audio": {"original_sample_rate": 22050, "original_duration_sec": 4.9, "analysed_duration_sec": 4.6, "processed_sample_rate": 16000},
+  "audio": {"original_sample_rate": 22050, "original_duration_sec": 4.9, "analysed_duration_sec": 4.6,
+            "speech_start_sec": 0.3, "processed_sample_rate": 16000},
   "processing_time_ms": 610
 }
 ```
 
-Without `language`, the multilingual model is used. Errors return `{"detail": "..."}`:
+Segment times count from `speech_start_sec` (leading silence is skipped); add it to map a segment onto the uploaded file. Without `language`, the multilingual model is used. Errors return `{"detail": "..."}`:
 `400` empty, corrupt, silent or too-short audio, or an unsupported language; `413` file over
 20 MB; `415` unsupported file type; `503` model not loaded. The API never guesses without a
 trained model. Interactive docs: `http://localhost:8000/docs`.
@@ -238,8 +242,14 @@ backend/
   tests/          pytest suite
   *.py            data download, dataset cleaning, training, evaluation, report generation
 frontend/
-  src/            React app: pages (detector, results), components, charts, mic recorder
-  public/samples/ test-set sample clips (see NOTICE.md)
+  src/
+    components/   chat/ (conversation, voice notes, verdicts, composer, recorder with live
+                  spectrogram, test-clip tray), info/ (side panel), icons
+    pages/        report/ (the "How Shield was tested" screen)
+    hooks/, lib/  backend data, routing, shared audio player; API client, Shield's scripted
+                  answers, verdict-card drawing, formatting, languages, samples, mic capture
+    styles/       design tokens and base styles (component styles sit next to each component)
+  public/samples/ test-set clips (see NOTICE.md)
 data/             manifest.csv and dataset_report.json (audio is downloaded locally, not committed)
 docs/             demo walkthrough, screenshot
 ```

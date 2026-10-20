@@ -1,12 +1,10 @@
-// Small wrapper around the FastAPI backend.
+// Client for the FastAPI backend.
 // Development: Vite proxies /api to port 8000. Production: same origin (FastAPI serves the built
 // site), or set VITE_API_BASE at build time when the API lives on another host.
 const BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 
-export const ALLOWED = [".wav", ".flac", ".mp3", ".ogg", ".m4a"];
-export const MAX_MB = 20;
-
-export const pct = (x, digits = 1) => `${(x * 100).toFixed(digits)}%`;
+export const ALLOWED_TYPES = [".wav", ".flac", ".mp3", ".ogg", ".m4a"];
+export const MAX_UPLOAD_MB = 20;
 
 async function readError(res) {
   try {
@@ -19,35 +17,28 @@ async function readError(res) {
   return `Request failed (HTTP ${res.status}).`;
 }
 
-export async function getHealth() {
+async function getJson(path, offlineMessage) {
   try {
-    const res = await fetch(`${BASE}/api/health`);
+    const res = await fetch(`${BASE}${path}`);
     return res.ok ? await res.json() : { error: await readError(res) };
   } catch {
-    return { error: "Cannot reach the detector. Start the backend server and try again." };
+    return { error: offlineMessage };
   }
 }
 
-/** Full evaluation report (per-language metrics, dataset, training). null if unavailable. */
-export async function getReport() {
-  try {
-    const res = await fetch(`${BASE}/api/report`);
-    return res.ok ? await res.json() : { error: await readError(res) };
-  } catch {
-    return { error: "Cannot reach the backend." };
-  }
-}
+/** Model status and evaluated languages. */
+export const getHealth = () => getJson("/api/health", "Cannot reach the detector. Start the backend server and try again.");
 
-/** Learning-curve study (training clips vs EER). null if not run yet. */
+/** Full evaluation report (per-language metrics, dataset, training). */
+export const getReport = () => getJson("/api/report", "Cannot reach the detector.");
+
+/** Learning-curve study, or null when it has not been run. */
 export async function getDataSizeStudy() {
-  try {
-    const res = await fetch(`${BASE}/api/data-size-study`);
-    return res.ok ? await res.json() : null;
-  } catch {
-    return null;
-  }
+  const r = await getJson("/api/data-size-study", "");
+  return r.error ? null : r;
 }
 
+/** Upload one clip; language selects the model and must be one of the evaluated languages. */
 export async function predict(file, language) {
   const form = new FormData();
   form.append("file", file);
@@ -56,7 +47,7 @@ export async function predict(file, language) {
   try {
     res = await fetch(`${BASE}/api/predict`, { method: "POST", body: form });
   } catch {
-    throw new Error("Cannot reach the backend. Is it running?");
+    throw new Error("Cannot reach the detector. Is the backend running?");
   }
   if (!res.ok) throw new Error(await readError(res));
   return res.json();
